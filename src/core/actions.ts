@@ -1,5 +1,5 @@
 import { produce } from 'immer'
-import { SHOP, STARTING_CONDITION } from './defs'
+import { SHOP } from './defs'
 import type { RecipeId, ResourceId } from './defs'
 import { checkBuyOffer, checkMove, checkPlacement, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
 import { stateRng } from './rng'
@@ -62,12 +62,8 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
         produce(state, (draft) => {
           draft.credits -= offer.price
           draft.shop.offers = draft.shop.offers.filter((o) => o.machine.id !== action.machineId)
-          draft.machines.push({
-            ...structuredClone(offer.machine),
-            id: nextId(draft, 'm'),
-            condition: STARTING_CONDITION,
-            lifetimeWear: 0,
-          })
+          // The Offer's Machine was built by buildMachine: full Condition, no Wear.
+          draft.machines.push({ ...structuredClone(offer.machine), id: nextId(draft, 'm') })
         }),
       )
     }

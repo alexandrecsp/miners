@@ -1,4 +1,4 @@
-import { isMiner, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import { isBroken, isMiner, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
 import type { MachineDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
 import { compareIds } from './ids'
 import { fail, ok } from './result'
@@ -96,15 +96,16 @@ export function minableDepositAt(
 
 export type IdleReason = 'noDeposit' | 'storageFull' | 'inputsMissing'
 
-export type MachineStatus = { kind: 'inventory' } | { kind: 'working' } | { kind: 'idle'; reason: IdleReason }
+export type MachineStatus = { kind: 'inventory' } | { kind: 'broken' } | { kind: 'working' } | { kind: 'idle'; reason: IdleReason }
 
 /**
- * The Machine Status: not placed, Working when the Mining system would produce from it now
+ * The Machine Status: not placed, Broken at 0% Condition, Working when the Mining system would produce from it now
  * (a minable Deposit and Storage room), otherwise Idle with its reason.
  */
 export function machineStatus(state: GameState, machineId: string): MachineStatus {
   const machine = state.machines.find((m) => m.id === machineId)
   if (!machine || !machine.tile) return { kind: 'inventory' }
+  if (isBroken(machine.condition)) return { kind: 'broken' }
   if (!isMiner(machine.defId)) {
     const recipe = recipeOf(machine)
     if (!recipe) return { kind: 'idle', reason: 'inputsMissing' }
@@ -114,7 +115,7 @@ export function machineStatus(state: GameState, machineId: string): MachineStatu
   }
   const deposit = minableDepositAt(state, machine)
   if (!deposit) return { kind: 'idle', reason: 'noDeposit' }
-  if (storageRoom(state, deposit.resource) <= 0) return { kind: 'idle', reason: 'storageFull' }
+  if (storageRoom(state, deposit.resource) <= ROOM_EPSILON) return { kind: 'idle', reason: 'storageFull' }
   return { kind: 'working' }
 }
 
@@ -124,7 +125,7 @@ export function recipeOf(machine: Pick<Machine, 'recipeId'>): RecipeDef | undefi
 }
 
 /** Below this room a Resource counts as full, so float rounding cannot leave a sliver of room. */
-const ROOM_EPSILON = 1e-9
+export const ROOM_EPSILON = 1e-9
 
 /** How many batches of a Recipe the inputs in Storage and the room under the output's Storage Cap allow, for a Machine at the given Efficiency. */
 export function refineBatchLimit(state: Pick<GameState, 'storage'>, recipe: RecipeDef, efficiency: number): number {

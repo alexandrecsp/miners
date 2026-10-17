@@ -3,23 +3,26 @@ import type { Draft } from 'immer'
 import { marketDrift } from './market'
 import { mining } from './mining'
 import { refining } from './refining'
+import { wear } from './wear'
 import { depositSpawn } from './spawn'
 import { shopTimer } from './shop'
 import { stateRng } from './rng'
 import type { Rng } from './rng'
+import type { StepContext } from './stepContext'
 import type { GameState } from './types'
 
-type System = (draft: Draft<GameState>, dt: number, rng: Rng) => void
+type System = (draft: Draft<GameState>, dt: number, rng: Rng, ctx: StepContext) => void
 
 function clock(draft: Draft<GameState>, dt: number): void {
   draft.simClock += dt
 }
 
 /** The Step's systems, in the order they run. */
-const PIPELINE: readonly System[] = [clock, marketDrift, shopTimer, depositSpawn, mining, refining]
+const PIPELINE: readonly System[] = [clock, marketDrift, shopTimer, depositSpawn, mining, refining, wear]
 
 export function step(draft: Draft<GameState>, dt: number, rng: Rng): void {
-  for (const system of PIPELINE) system(draft, dt, rng)
+  const ctx: StepContext = { outputShares: new Map() }
+  for (const system of PIPELINE) system(draft, dt, rng, ctx)
 }
 
 /** Runs as many Steps of `stepLength` as fit in `total`, the last one shorter, in one produce. */

@@ -8,6 +8,9 @@ import type { GameState, Machine, Tile } from './types'
 
 const TILE: Tile = { x: 15, y: 15 }
 
+/** A Durability so high that Wear does not disturb these tests of production at full Condition. */
+const INDESTRUCTIBLE = 1e9
+
 /** A plain full-Condition Machine written straight into a scenario. */
 function machine(id: string, defId: 'drill' | 'refinery', stats: { rate: number; efficiency: number; durability: number }): Machine {
   return {
@@ -31,7 +34,7 @@ function scenario(opts: { rate?: number; efficiency?: number; ore?: number; allo
     d.shop.nextRefresh = 1e9
     d.machines = [
       {
-        ...machine('m100', 'refinery', { rate: opts.rate ?? 0.5, efficiency: opts.efficiency ?? 1.1, durability: 1 }),
+        ...machine('m100', 'refinery', { rate: opts.rate ?? 0.5, efficiency: opts.efficiency ?? 1.1, durability: INDESTRUCTIBLE }),
         tile: TILE,
       },
     ]
@@ -57,7 +60,7 @@ describe('Refinery Placement', () => {
     const state = produce(inventoryRefinery(), (d) => {
       d.grid.deposits = [{ id: 'd1', tile: { x: 14, y: 14 }, resource: 'ore', remaining: 100 }]
       d.grid.rocks = [{ x: 13, y: 13 }]
-      d.machines.push({ ...machine('m101', 'refinery', { rate: 0.4, efficiency: 1, durability: 1 }), tile: { x: 12, y: 12 } })
+      d.machines.push({ ...machine('m101', 'refinery', { rate: 0.4, efficiency: 1, durability: INDESTRUCTIBLE }), tile: { x: 12, y: 12 } })
     })
     expect(checkPlacement(state, 'm100', { x: 14, y: 14 })).toEqual({ ok: false, reason: 'fail.depositOnTile' })
     expect(checkPlacement(state, 'm100', { x: 13, y: 13 })).toEqual({ ok: false, reason: 'fail.tileHasRock' })
@@ -116,7 +119,7 @@ describe('Refining', () => {
   it('refines Ore mined in the same Step', () => {
     const state = produce(scenario({ ore: 0 }), (d) => {
       d.grid.deposits = [{ id: 'd1', tile: { x: 16, y: 15 }, resource: 'ore', remaining: 1000 }]
-      d.machines.push({ ...machine('m101', 'drill', { rate: 4, efficiency: 1, durability: 1 }), tile: { x: 16, y: 15 } })
+      d.machines.push({ ...machine('m101', 'drill', { rate: 4, efficiency: 1, durability: INDESTRUCTIBLE }), tile: { x: 16, y: 15 } })
     })
     const next = advance(state, 1, 1)
     expect(next.storage.alloy.amount).toBeGreaterThan(0)
@@ -162,7 +165,7 @@ describe('Set Recipe', () => {
 
   it('two Refineries on different Recipes each follow their own', () => {
     const state = produce(crystalScenario(), (d) => {
-      d.machines.push({ ...machine('m101', 'refinery', { rate: 0.5, efficiency: 1, durability: 1 }), tile: { x: 16, y: 15 } })
+      d.machines.push({ ...machine('m101', 'refinery', { rate: 0.5, efficiency: 1, durability: INDESTRUCTIBLE }), tile: { x: 16, y: 15 } })
     })
     const next = advance(state, 10, 1)
     // m100: 10 Ore + 5 Crystal -> 10 Alloy; m101: 20 Ore -> 5 Alloy
@@ -173,7 +176,7 @@ describe('Set Recipe', () => {
 
   it('fails with a reason and changes nothing on a Drill', () => {
     const state = produce(scenario(), (d) => {
-      d.machines.push({ ...machine('m101', 'drill', { rate: 1, efficiency: 1, durability: 1 }) })
+      d.machines.push({ ...machine('m101', 'drill', { rate: 1, efficiency: 1, durability: INDESTRUCTIBLE }) })
     })
     expect(setRecipe(state, 'm101', 'oreCrystalToAlloy')).toEqual({ ok: false, reason: 'fail.notRefinery' })
   })

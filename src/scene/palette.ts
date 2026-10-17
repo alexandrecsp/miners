@@ -21,6 +21,7 @@ const TOKENS = {
   refineryGlow: '--color-scene-refinery-glow',
   statusWorking: '--color-scene-status-working',
   statusIdle: '--color-scene-status-idle',
+  statusBroken: '--color-scene-status-broken',
 } as const
 
 export type PaletteKey = keyof typeof TOKENS

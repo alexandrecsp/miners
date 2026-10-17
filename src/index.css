@@ -35,6 +35,8 @@
   --color-scene-refinery-glow: #ff7a3d;
   --color-scene-status-working: #4dff9a;
   --color-scene-status-idle: #ffc640;
+  --color-scene-status-broken: #ff3d4d;
+  --color-danger: #ff3d4d;
   --shadow-glow: 0 0 12px 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 

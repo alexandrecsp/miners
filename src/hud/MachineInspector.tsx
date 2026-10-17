@@ -1,4 +1,4 @@
-import { MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
+import { isBroken, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
 import type { RecipeDef, StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
 import { effectiveStats, machineStatus, recipeOf } from '../core/queries'
@@ -27,6 +27,8 @@ function statusText(status: MachineStatus): string {
       return t('status.inventory')
     case 'working':
       return t('status.working')
+    case 'broken':
+      return t('status.broken')
     case 'idle':
       return t(`idle.${status.reason}`)
   }
@@ -62,6 +64,28 @@ export function MachineInspector() {
         <span className="text-xs uppercase tracking-widest text-ink/60">{t('hud.status')}</span>{' '}
         {status}
       </p>
+      <div className="mt-2">
+        <div className="flex justify-between text-xs uppercase tracking-widest text-ink/60">
+          <span>{t('hud.condition')}</span>
+          <span>{formatNumber(machine.condition)}%</span>
+        </div>
+        <div
+          role="progressbar"
+          aria-label={t('hud.condition')}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.floor(machine.condition)}
+          className="mt-1 h-2 w-full border border-edge"
+        >
+          <div
+            className={`h-full ${isBroken(machine.condition) ? 'bg-danger' : 'bg-accent'}`}
+            style={{ width: `${machine.condition}%` }}
+          />
+        </div>
+        <p className="mt-1 text-xs text-ink/60">
+          {t('hud.lifetimeWear')} {formatNumber(machine.lifetimeWear)}
+        </p>
+      </div>
       {recipe && (
         <div className="mt-2">
           <h3 className="text-xs uppercase tracking-widest text-ink/60">{t('hud.recipe')}</h3>

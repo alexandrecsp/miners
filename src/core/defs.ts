@@ -147,8 +147,15 @@ export const GRID_DEFS = {
   rocks: 200,
 }
 
-/** Output factor at 100% Condition; Wear (T014) will make it follow Condition. */
-export const FULL_CONDITION_OUTPUT_FACTOR = 1
+/** Whether a Condition is Broken: 0% or below. The one place that rule lives. */
+export function isBroken(condition: number): boolean {
+  return condition <= 0
+}
+
+/** The output factor of a Machine: 0.5 + 0.5 x Condition / 100 while Condition is above 0, and 0 when Broken. */
+export function outputFactor(condition: number): number {
+  return !isBroken(condition) ? 0.5 + (0.5 * condition) / 100 : 0
+}
 
 /** Whether a Machine Def mines Deposits (as opposed to working on Empty Tiles). */
 export function isMiner(defId: MachineDefId): boolean {
