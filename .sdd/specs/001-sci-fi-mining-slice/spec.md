@@ -1,5 +1,5 @@
 ---
-base-commit: 3eaebe8eace67e0a9983b5b14295beee1215ac16
+base-commit: ea7c16014cc974077c38d139958d83c609adfbd7
 ---
 
 # Sci-fi Mining Game: Vertical Slice
