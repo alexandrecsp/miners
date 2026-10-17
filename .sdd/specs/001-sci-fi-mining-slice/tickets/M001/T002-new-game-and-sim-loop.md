@@ -3,7 +3,7 @@ id: T002
 title: Generate a new game and run the Sim Loop
 milestone: M001
 blocked-by: [T001]
-status: todo
+status: done
 ---
 
 ## What to build

@@ -1,9 +1,11 @@
 const STRINGS = {
   'app.title': 'Miners',
   'app.tagline': 'Mine. Refine. Sell. Expand.',
+  'machine.drill': 'Drill',
+  'machine.laserMiner': 'Laser Miner',
+  'machine.refinery': 'Refinery',
   'placeholder.credits': 'Credits',
-  'placeholder.ore': 'Ore',
-  'placeholder.price': 'Ore price',
+  'placeholder.clock': 'Sim clock (s)',
   'placeholder.hint': 'The Zone is being surveyed.',
 } as const
 
