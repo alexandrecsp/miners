@@ -1,13 +1,20 @@
 import { useShallow } from 'zustand/react/shallow'
 import { MACHINE_DEFS, SHOP, STAT_NAMES } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { checkShopRefresh, shopCountdown } from '../core/queries'
+import { checkBuyOffer, checkShopRefresh, shopCountdown } from '../core/queries'
 import { t } from '../core/strings'
 import type { Offer } from '../core/types'
 import { dispatch, useGameStore } from '../store/gameStore'
+import { PanelButton } from './PanelButton'
 import { STAT_LABEL } from './statLabels'
 
 function OfferRow({ offer }: { offer: Offer }) {
+  /** Why the Offer cannot be bought; empty when it can. */
+  const blockedReason = useGameStore((s) => {
+    const check = checkBuyOffer(s.game, offer.machine.id)
+    return check.ok ? '' : t(check.reason)
+  })
+  const buyable = blockedReason === ''
   const def = MACHINE_DEFS[offer.machine.defId]
   return (
     <li className="flex flex-col gap-0.5 border-b border-edge/40 pb-2 last:border-b-0">
@@ -24,6 +31,12 @@ function OfferRow({ offer }: { offer: Offer }) {
           </span>
         </div>
       ))}
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-xs text-ink/60">{blockedReason}</span>
+        <PanelButton enabled={buyable} onClick={() => dispatch({ kind: 'buyOffer', machineId: offer.machine.id })}>
+          {t('hud.buy')}
+        </PanelButton>
+      </div>
     </li>
   )
 }
@@ -44,14 +57,11 @@ export function ShopPanel() {
           <OfferRow key={offer.machine.id} offer={offer} />
         ))}
       </ul>
-      <button
-        type="button"
-        aria-disabled={!refreshable}
-        className={`mt-2 border border-edge px-3 py-1 text-xs uppercase tracking-widest hover:border-accent ${refreshable ? '' : 'opacity-40'}`}
-        onClick={() => dispatch({ kind: 'refreshShop' })}
-      >
-        {t('hud.shopRefresh')} {formatNumber(SHOP.refreshCost)}
-      </button>
+      <div className="mt-2">
+        <PanelButton enabled={refreshable} onClick={() => dispatch({ kind: 'refreshShop' })}>
+          {t('hud.shopRefresh')} {formatNumber(SHOP.refreshCost)}
+        </PanelButton>
+      </div>
     </aside>
   )
 }

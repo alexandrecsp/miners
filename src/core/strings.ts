@@ -43,6 +43,9 @@ const STRINGS = {
   'fail.invalidAmount': 'Enter an amount above zero.',
   'fail.notEnoughResource': 'Storage does not hold that much.',
   'fail.notEnoughCredits': 'Not enough Credits.',
+  'fail.offerNotFound': 'That Offer is no longer in the Shop.',
+  'fail.placementNotAvailable': 'This Machine cannot be placed yet.',
+  'hud.buy': 'Buy',
   'fail.noDeposit': 'This Machine needs a Deposit on the Tile.',
 } as const
 

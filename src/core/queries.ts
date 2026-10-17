@@ -4,7 +4,7 @@ import { fail, ok } from './result'
 import type { Result } from './result'
 import { effectiveStat } from './stats'
 import { sameTile } from './tile'
-import type { Deposit, GameState, GridShape, Machine, Tile } from './types'
+import type { Deposit, GameState, GridShape, Machine, Offer, Tile } from './types'
 
 /** The part of the Game State the Placement check reads. */
 export type PlacementView = Pick<GameState, 'machines' | 'grid'>
@@ -35,6 +35,7 @@ export function checkPlacement(state: PlacementView, machineId: string, tile: Ti
   const machine = state.machines.find((m) => m.id === machineId)
   if (!machine) return fail('fail.machineNotFound')
   if (machine.tile) return fail('fail.alreadyPlaced')
+  if (!MACHINE_DEFS[machine.defId].placeable) return fail('fail.placementNotAvailable')
   if (!isTileUnlocked(state.grid, tile)) return fail('fail.outsideUnlocked')
   const isTarget = (a: Tile) => sameTile(a, tile)
   if (state.machines.some((m) => m.tile && isTarget(m.tile))) return fail('fail.tileOccupied')
@@ -133,6 +134,13 @@ export function checkSale(state: Pick<GameState, 'storage'>, resource: ResourceI
 /** Whether the Shop may be refreshed for a fee: the one check the Refresh Shop action and the Shop panel share. */
 export function checkShopRefresh(state: Pick<GameState, 'credits'>): Result<null> {
   return state.credits >= SHOP.refreshCost ? ok(null) : fail('fail.notEnoughCredits')
+}
+
+/** Whether an Offer, named by its rolled Machine's id, may be bought: the one check the Buy Offer action and the Shop panel share. */
+export function checkBuyOffer(state: Pick<GameState, 'credits' | 'shop'>, machineId: string): Result<Offer> {
+  const offer = state.shop.offers.find((o) => o.machine.id === machineId)
+  if (!offer) return fail('fail.offerNotFound')
+  return state.credits >= offer.price ? ok(offer) : fail('fail.notEnoughCredits')
 }
 
 /** Sim seconds until the next timed Shop Refresh. */

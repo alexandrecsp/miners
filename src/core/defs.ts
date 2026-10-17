@@ -26,6 +26,8 @@ export interface MachineDef {
   modSlots: number
   /** Whether the Shop stocks this Machine Def from a new game; Unlocks add the rest. */
   availableAtStart: boolean
+  /** Whether this Machine Def's Placement rule exists yet; the Refinery's arrives with Refining (T012), which removes this flag. */
+  placeable: boolean
   basePrice: number
   repairPerPoint: number
   movePerTile: number
@@ -40,6 +42,7 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.25,
     modSlots: 2,
     availableAtStart: true,
+    placeable: true,
     basePrice: 60,
     repairPerPoint: 0.3,
     movePerTile: 2,
@@ -52,6 +55,7 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.8,
     modSlots: 3,
     availableAtStart: false,
+    placeable: true,
     basePrice: 400,
     repairPerPoint: 1,
     movePerTile: 5,
@@ -64,6 +68,7 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.15,
     modSlots: 2,
     availableAtStart: true,
+    placeable: false,
     basePrice: 150,
     repairPerPoint: 0.5,
     movePerTile: 4,
