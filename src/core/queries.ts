@@ -296,3 +296,13 @@ export function checkFitMod(state: Pick<GameState, 'machines' | 'modInventory'>,
   const slot = machine.mods.indexOf(null)
   return slot >= 0 ? ok(slot) : fail('fail.noFreeModSlot')
 }
+
+/** Whether the Mod in a Mod Slot may be removed, and which Mod it is: the one check the Remove Mod action and the inspector share. */
+export function checkRemoveMod(state: Pick<GameState, 'machines'>, machineId: string, slot: number): Result<ModDefId> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (!Number.isInteger(slot) || slot < 0 || slot >= machine.mods.length) return fail('fail.noSuchModSlot')
+  const fitted = machine.mods[slot]
+  if (fitted === null || fitted === undefined) return fail('fail.modSlotEmpty')
+  return ok(fitted as ModDefId)
+}

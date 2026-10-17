@@ -113,6 +113,44 @@ describe('Fit Mod action', () => {
   })
 })
 
+const removeMod = (machineId: string, slot: number): PlayerAction => ({ kind: 'removeMod', machineId, slot })
+
+describe('Remove Mod action', () => {
+  it('returns the Mod to the Mod Inventory, frees the Slot, restores the Stat, and costs nothing', () => {
+    const state = scenario()
+    const id = state.machines[0]!.id
+    const fitted = must(must(state, buyMod('overclockedMotor')), fitMod(id, 'overclockedMotor'))
+    const next = must(fitted, removeMod(id, 0))
+    expect(next.modInventory.overclockedMotor).toBe(1)
+    expect(next.machines[0]!.mods[0]).toBeNull()
+    expect(effectiveStats(next.machines[0]!).rate).toBeCloseTo(1, 9)
+    expect(next.credits).toBe(fitted.credits)
+  })
+
+  it('lets the removed Mod be fitted on a second Machine, changing its Effective Stat', () => {
+    const state = scenario((_, d) => {
+      const first = d.machines[0]!
+      d.machines.push({ ...first, id: 'm-second', tile: null, baseStats: { ...first.baseStats }, mods: [...first.mods] })
+    })
+    const id = state.machines[0]!.id
+    let s = must(must(state, buyMod('overclockedMotor')), fitMod(id, 'overclockedMotor'))
+    s = must(must(s, removeMod(id, 0)), fitMod('m-second', 'overclockedMotor'))
+    expect(effectiveStats(s.machines[1]!).rate).toBeCloseTo(1.25, 9)
+    expect(effectiveStats(s.machines[0]!).rate).toBeCloseTo(1, 9)
+  })
+
+  it('fails for an empty Slot, a Slot the Machine lacks, or an unknown Machine, changing nothing', () => {
+    const state = scenario()
+    const id = state.machines[0]!.id
+    const before = structuredClone(state)
+    expect(applyAction(state, removeMod(id, 0))).toEqual({ ok: false, reason: 'fail.modSlotEmpty' })
+    expect(applyAction(state, removeMod(id, 99))).toEqual({ ok: false, reason: 'fail.noSuchModSlot' })
+    expect(applyAction(state, removeMod(id, -1))).toEqual({ ok: false, reason: 'fail.noSuchModSlot' })
+    expect(applyAction(state, removeMod('nope', 0))).toEqual({ ok: false, reason: 'fail.machineNotFound' })
+    expect(state).toEqual(before)
+  })
+})
+
 describe('Reinforced Casing', () => {
   it('slows Wear by its multiplier', () => {
     const state = scenario()

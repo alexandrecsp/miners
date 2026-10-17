@@ -1,7 +1,7 @@
 import { isBroken, MACHINE_DEFS, MOD_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
 import type { ModDefId, RecipeDef, StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { checkFitMod, checkRepair, effectiveStats, machineStatus, recipeOf, repairCost as repairCostOf } from '../core/queries'
+import { checkFitMod, checkRemoveMod, checkRepair, effectiveStats, machineStatus, recipeOf, repairCost as repairCostOf } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
 import type { StringId } from '../core/strings'
@@ -137,9 +137,19 @@ export function MachineInspector() {
         {machine.mods.map((fitted, index) => (
           <li key={index} className="border border-edge/40 px-2 py-1">
             {fitted !== null && Object.hasOwn(MOD_DEFS, fitted) ? (
-              <span>
-                {t(MOD_DEFS[fitted as ModDefId].nameId)}{' '}
-                <span className="text-xs text-ink/60">{modEffectText(MOD_DEFS[fitted as ModDefId])}</span>
+              <span className="flex items-center justify-between gap-2">
+                <span>
+                  {t(MOD_DEFS[fitted as ModDefId].nameId)}{' '}
+                  <span className="text-xs text-ink/60">{modEffectText(MOD_DEFS[fitted as ModDefId])}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={!checkRemoveMod({ machines: [machine] }, machine.id, index).ok}
+                  onClick={() => dispatch({ kind: 'removeMod', machineId: machine.id, slot: index })}
+                  className="border border-edge px-2 py-0.5 text-xs uppercase tracking-widest hover:border-accent"
+                >
+                  {t('hud.remove')}
+                </button>
               </span>
             ) : (
               <span className="text-ink/60">{t('hud.modSlotEmpty')}</span>

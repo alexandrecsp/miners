@@ -1,7 +1,7 @@
 import { produce } from 'immer'
 import { MAX_CONDITION, MOD_DEFS, SHOP } from './defs'
 import type { ModDefId, RecipeId, ResourceId } from './defs'
-import { checkBuyMod, checkBuyOffer, checkFitMod, checkMove, checkPlacement, checkRepair, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
+import { checkBuyMod, checkBuyOffer, checkFitMod, checkMove, checkPlacement, checkRemoveMod, checkRepair, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
 import { stateRng } from './rng'
 import { nextId } from './ids'
 import { fillShop } from './shop'
@@ -21,6 +21,7 @@ export type PlayerAction =
   | { kind: 'repair'; machineId: string }
   | { kind: 'buyMod'; modId: ModDefId }
   | { kind: 'fitMod'; machineId: string; modId: ModDefId }
+  | { kind: 'removeMod'; machineId: string; slot: number }
 
 /** Apply a Player Action: the next Game State, or a failure reason with the state untouched. */
 export function applyAction(state: GameState, action: PlayerAction): Result<GameState> {
@@ -116,6 +117,16 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
         produce(state, (draft) => {
           draft.modInventory[action.modId] = (draft.modInventory[action.modId] ?? 0) - 1
           draft.machines.find((m) => m.id === action.machineId)!.mods[check.value] = action.modId
+        }),
+      )
+    }
+    case 'removeMod': {
+      const check = checkRemoveMod(state, action.machineId, action.slot)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.modInventory[check.value] = (draft.modInventory[check.value] ?? 0) + 1
+          draft.machines.find((m) => m.id === action.machineId)!.mods[action.slot] = null
         }),
       )
     }

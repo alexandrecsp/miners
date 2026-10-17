@@ -3,7 +3,7 @@ id: T017
 title: Remove a Mod and refit it elsewhere
 milestone: M007
 blocked-by: [T016]
-status: todo
+status: done
 ---
 
 ## What to build
