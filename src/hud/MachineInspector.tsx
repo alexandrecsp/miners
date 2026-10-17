@@ -1,9 +1,10 @@
 import { isBroken, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
 import type { RecipeDef, StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { effectiveStats, machineStatus, recipeOf } from '../core/queries'
+import { checkRepair, effectiveStats, machineStatus, recipeOf, repairCost as repairCostOf } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
+import type { StringId } from '../core/strings'
 import { dispatch, useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
 import { STAT_LABEL } from './statLabels'
@@ -49,7 +50,13 @@ export function MachineInspector() {
   const startMoving = useUiStore((s) => s.startMoving)
   const moving = useUiStore((s) => s.mode.kind === 'moving')
   const status = useGameStore((s) => (selectedId ? statusText(machineStatus(s.game, selectedId)) : ''))
+  const repairCheck = useGameStore((s) => {
+    const check = selectedId ? checkRepair(s.game, selectedId) : undefined
+    return check ? (check.ok ? `ok:${check.value}` : check.reason) : ''
+  })
   if (!machine) return null
+  const repairCost = repairCheck.startsWith('ok:') ? Number(repairCheck.slice(3)) : repairCostOf(machine)
+  const repairBlocked = repairCheck.startsWith('ok:') ? undefined : (repairCheck as StringId)
   const effective = effectiveStats(machine)
   const recipe = recipeOf(machine)
   return (
@@ -85,6 +92,18 @@ export function MachineInspector() {
         <p className="mt-1 text-xs text-ink/60">
           {t('hud.lifetimeWear')} {formatNumber(machine.lifetimeWear)}
         </p>
+      </div>
+      <div className="mt-2">
+        <button
+          type="button"
+          disabled={repairBlocked !== undefined}
+          title={repairBlocked ? t(repairBlocked) : undefined}
+          onClick={() => dispatch({ kind: 'repair', machineId: machine.id })}
+          className="border border-accent px-3 py-1 text-xs uppercase tracking-widest text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+        >
+          {t('hud.repair')} ({formatNumber(repairCost)})
+        </button>
+        {repairBlocked && <p className="mt-1 text-xs text-ink/60">{t(repairBlocked)}</p>}
       </div>
       {recipe && (
         <div className="mt-2">

@@ -58,6 +58,9 @@ const STRINGS = {
   'idle.inputsMissing': 'Idle: inputs missing',
   'fail.depositOnTile': 'This Machine needs an Empty Tile, without a Deposit.',
   'fail.noDeposit': 'This Machine needs a Deposit on the Tile.',
+  'fail.conditionFull': 'Condition is already full.',
+  'hud.repair': 'Repair',
+  'hud.repairCost': 'Repair cost',
   'fail.notRefinery': 'Only a Refinery has a Recipe.',
   'fail.recipeNotFound': 'That Recipe does not exist.',
 } as const

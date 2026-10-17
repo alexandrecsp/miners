@@ -163,6 +163,12 @@ export function isMiner(defId: MachineDefId): boolean {
 }
 
 export const STARTING_CONDITION = 100
+
+/** The Condition a Repair restores. */
+export const MAX_CONDITION = 100
+
+/** Lifetime Wear that adds 100% to a Machine's Repair cost. */
+export const REPAIR_WEAR_DIVISOR = 1000
 export const STARTING_STORAGE_TIER = 1
 export const STARTING_CREDITS = 50
 export const STARTING_KIT: readonly MachineDefId[] = ['drill']

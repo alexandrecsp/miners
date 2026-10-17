@@ -1,4 +1,4 @@
-import { isBroken, isMiner, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import { isBroken, isMiner, MACHINE_DEFS, MAX_CONDITION, REPAIR_WEAR_DIVISOR, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
 import type { MachineDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
 import { compareIds } from './ids'
 import { fail, ok } from './result'
@@ -250,4 +250,20 @@ export function checkSetRecipe(state: Pick<GameState, 'machines'>, machineId: st
   if (!machine) return fail('fail.machineNotFound')
   if (machine.defId !== 'refinery') return fail('fail.notRefinery')
   return Object.hasOwn(RECIPE_DEFS, recipeId) ? ok(null) : fail('fail.recipeNotFound')
+}
+
+/** The Repair cost: the Machine Def's Repair cost per point x missing Condition points x (1 + Lifetime Wear / 1000), rounded up to whole Credits. */
+export function repairCost(machine: Pick<Machine, 'defId' | 'condition' | 'lifetimeWear'>): number {
+  const missing = MAX_CONDITION - machine.condition
+  const raw = MACHINE_DEFS[machine.defId].repairPerPoint * missing * (1 + machine.lifetimeWear / REPAIR_WEAR_DIVISOR)
+  return Math.ceil(raw - 1e-9)
+}
+
+/** Whether a Machine may be Repaired and what it costs: the one check the Repair action and the inspector share. */
+export function checkRepair(state: Pick<GameState, 'machines' | 'credits'>, machineId: string): Result<number> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (machine.condition >= MAX_CONDITION) return fail('fail.conditionFull')
+  const cost = repairCost(machine)
+  return state.credits >= cost ? ok(cost) : fail('fail.notEnoughCredits')
 }
