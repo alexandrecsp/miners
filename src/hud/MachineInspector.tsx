@@ -1,10 +1,10 @@
-import { MACHINE_DEFS, STAT_NAMES } from '../core/defs'
-import type { StatName } from '../core/defs'
+import { MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
+import type { RecipeDef, StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { effectiveStats, machineStatus } from '../core/queries'
+import { effectiveStats, machineStatus, recipeOf } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
-import { useGameStore } from '../store/gameStore'
+import { dispatch, useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
 import { STAT_LABEL } from './statLabels'
 
@@ -32,6 +32,13 @@ function statusText(status: MachineStatus): string {
   }
 }
 
+function recipeSummary(recipe: RecipeDef): string {
+  const inputs = recipeInputs(recipe)
+    .map(([resource, amount]) => `${formatNumber(amount)} ${t(RESOURCE_DEFS[resource].nameId)}`)
+    .join(' + ')
+  return `${inputs} → ${formatNumber(recipe.outputAmount)} ${t(RESOURCE_DEFS[recipe.output].nameId)}`
+}
+
 /** The Machine inspector: the selected Machine's Def name and Base Stats. */
 export function MachineInspector() {
   const selectedId = useUiStore((s) => s.selectedMachineId)
@@ -42,6 +49,7 @@ export function MachineInspector() {
   const status = useGameStore((s) => (selectedId ? statusText(machineStatus(s.game, selectedId)) : ''))
   if (!machine) return null
   const effective = effectiveStats(machine)
+  const recipe = recipeOf(machine)
   return (
     <aside className="absolute bottom-4 right-4 w-64 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
       <div className="flex items-center justify-between">
@@ -54,6 +62,25 @@ export function MachineInspector() {
         <span className="text-xs uppercase tracking-widest text-ink/60">{t('hud.status')}</span>{' '}
         {status}
       </p>
+      {recipe && (
+        <div className="mt-2">
+          <h3 className="text-xs uppercase tracking-widest text-ink/60">{t('hud.recipe')}</h3>
+          <div className="mt-1 flex flex-col gap-1">
+            {Object.values(RECIPE_DEFS).map((def) => (
+              <button
+                key={def.id}
+                type="button"
+                aria-pressed={def.id === recipe.id}
+                onClick={() => dispatch({ kind: 'setRecipe', machineId: machine.id, recipeId: def.id })}
+                className={`border px-2 py-1 text-left text-xs ${def.id === recipe.id ? 'border-accent bg-accent/20 text-accent' : 'border-edge hover:border-accent'}`}
+              >
+                <span className="block uppercase tracking-widest">{t(def.nameId)}</span>
+                <span className="block text-ink/60">{recipeSummary(def)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.effectiveStats')}</h3>
       <StatList stats={effective} />
       <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.stats')}</h3>

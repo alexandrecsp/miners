@@ -1,7 +1,6 @@
 import type { Draft } from 'immer'
-import { FULL_CONDITION_OUTPUT_FACTOR, isMiner } from './defs'
-import { compareIds } from './ids'
-import { effectiveStats, minableDepositAt, storageRoom } from './queries'
+import { FULL_CONDITION_OUTPUT_FACTOR } from './defs'
+import { effectiveStats, minableDepositAt, placedMachinesInIdOrder, storageRoom } from './queries'
 import type { GameState } from './types'
 
 /**
@@ -9,8 +8,7 @@ import type { GameState } from './types'
  * limited by the room under the Storage Cap and by what the Deposit can give. Machines run in id order.
  */
 export function mining(draft: Draft<GameState>, dt: number): void {
-  const miners = draft.machines.filter((m) => m.tile !== null && isMiner(m.defId)).sort((a, b) => compareIds(a.id, b.id))
-  for (const machine of miners) {
+  for (const machine of placedMachinesInIdOrder(draft, 'miner')) {
     const deposit = minableDepositAt(draft, machine)
     if (!deposit) continue
     const stats = effectiveStats(machine)

@@ -76,17 +76,15 @@ describe('Buy Offer action', () => {
     expect(later.storage.ore.amount).toBeGreaterThan(0)
   })
 
-  it('leaves a bought Refinery in the Machine Inventory and rejects every Tile for it', () => {
+  it('lets a bought Refinery be placed on an Empty Tile', () => {
     const state = rich()
     const next = bought(state, offerOf(state, 'refinery').machine.id)
     const refinery = inventoryMachines(next).find((m) => m.defId === 'refinery')!
-    expect(refinery).toBeDefined()
-    for (let y = 0; y < next.grid.size; y++) {
-      for (let x = 0; x < next.grid.size; x++) {
-        const check = checkPlacement(next, refinery.id, { x, y })
-        expect(check.ok).toBe(false)
-      }
-    }
-    expect(checkPlacement(next, refinery.id, { x: 15, y: 15 })).toEqual({ ok: false, reason: 'fail.placementNotAvailable' })
+    expect(refinery.recipeId).toBe('oreToAlloy')
+    const empty = produce(next, (d) => {
+      d.grid.deposits = []
+      d.grid.rocks = []
+    })
+    expect(checkPlacement(empty, refinery.id, { x: 15, y: 15 }).ok).toBe(true)
   })
 })

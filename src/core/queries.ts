@@ -1,5 +1,6 @@
-import { MACHINE_DEFS, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { MachineDefId, ResourceId, StatName } from './defs'
+import { isMiner, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import type { MachineDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
+import { compareIds } from './ids'
 import { fail, ok } from './result'
 import type { Result } from './result'
 import { effectiveStat } from './stats'
@@ -29,16 +30,18 @@ export function storageRoom(state: Pick<GameState, 'storage'>, resource: Resourc
 
 /** Whether a Machine may stand on a Tile: the Def's rules, the Unlocked Area and other Machines. Shared by Placement and Move. */
 function checkTarget(state: PlacementView, machine: Machine, tile: Tile): Result<null> {
-  if (!MACHINE_DEFS[machine.defId].placeable) return fail('fail.placementNotAvailable')
   if (!isTileUnlocked(state.grid, tile)) return fail('fail.outsideUnlocked')
   const isTarget = (a: Tile) => sameTile(a, tile)
   if (state.machines.some((m) => m.tile && isTarget(m.tile))) return fail('fail.tileOccupied')
 
   const worksOn = MACHINE_DEFS[machine.defId].worksOn
   const deposit = state.grid.deposits.find((d) => isTarget(d.tile))
-  if (deposit) return worksOn.includes(deposit.resource) ? ok(null) : fail('fail.wrongDeposit')
+  if (deposit) {
+    if (!isMiner(machine.defId)) return fail('fail.depositOnTile')
+    return worksOn.includes(deposit.resource) ? ok(null) : fail('fail.wrongDeposit')
+  }
   if (state.grid.rocks.some(isTarget)) return fail('fail.tileHasRock')
-  return worksOn.includes('empty') ? ok(null) : fail('fail.noDeposit')
+  return isMiner(machine.defId) ? fail('fail.noDeposit') : ok(null)
 }
 
 /**
@@ -91,7 +94,7 @@ export function minableDepositAt(
   return deposit && MACHINE_DEFS[machine.defId].worksOn.includes(deposit.resource) ? deposit : undefined
 }
 
-export type IdleReason = 'noDeposit' | 'storageFull'
+export type IdleReason = 'noDeposit' | 'storageFull' | 'inputsMissing'
 
 export type MachineStatus = { kind: 'inventory' } | { kind: 'working' } | { kind: 'idle'; reason: IdleReason }
 
@@ -102,10 +105,46 @@ export type MachineStatus = { kind: 'inventory' } | { kind: 'working' } | { kind
 export function machineStatus(state: GameState, machineId: string): MachineStatus {
   const machine = state.machines.find((m) => m.id === machineId)
   if (!machine || !machine.tile) return { kind: 'inventory' }
+  if (!isMiner(machine.defId)) {
+    const recipe = recipeOf(machine)
+    if (!recipe) return { kind: 'idle', reason: 'inputsMissing' }
+    if (storageRoom(state, recipe.output) <= ROOM_EPSILON) return { kind: 'idle', reason: 'storageFull' }
+    const efficiency = effectiveStats(machine).efficiency
+    return refineBatchLimit(state, recipe, efficiency) > 0 ? { kind: 'working' } : { kind: 'idle', reason: 'inputsMissing' }
+  }
   const deposit = minableDepositAt(state, machine)
   if (!deposit) return { kind: 'idle', reason: 'noDeposit' }
   if (storageRoom(state, deposit.resource) <= 0) return { kind: 'idle', reason: 'storageFull' }
   return { kind: 'working' }
+}
+
+/** The Recipe a Refinery runs; undefined for a Machine with no Recipe. */
+export function recipeOf(machine: Pick<Machine, 'recipeId'>): RecipeDef | undefined {
+  return machine.recipeId ? RECIPE_DEFS[machine.recipeId] : undefined
+}
+
+/** Below this room a Resource counts as full, so float rounding cannot leave a sliver of room. */
+const ROOM_EPSILON = 1e-9
+
+/** How many batches of a Recipe the inputs in Storage and the room under the output's Storage Cap allow, for a Machine at the given Efficiency. */
+export function refineBatchLimit(state: Pick<GameState, 'storage'>, recipe: RecipeDef, efficiency: number): number {
+  let batches = Infinity
+  for (const [resource, perBatch] of recipeInputs(recipe)) {
+    batches = Math.min(batches, state.storage[resource].amount / perBatch)
+  }
+  const room = storageRoom(state, recipe.output)
+  if (room <= ROOM_EPSILON) return 0
+  return Math.min(batches, room / (recipe.outputAmount * efficiency))
+}
+
+/** The placed Machines of one kind, in id order: the order the Mining and Refining systems evaluate them in. */
+export function placedMachinesInIdOrder<M extends Pick<Machine, 'id' | 'defId' | 'tile'>>(
+  state: { machines: M[] },
+  kind: 'miner' | 'refinery',
+): M[] {
+  return state.machines
+    .filter((m) => m.tile !== null && isMiner(m.defId) === (kind === 'miner'))
+    .sort((x, y) => compareIds(x.id, y.id))
 }
 
 /** The Machines owned but not placed. */
@@ -202,4 +241,12 @@ export function offerPrice(defId: MachineDefId, quality: number): number {
   const raw = MACHINE_DEFS[defId].basePrice * (min + (max - min) * quality)
   // The tolerance keeps float noise (78.00000000000001) from rounding an exact price up by a Credit.
   return Math.ceil(raw - 1e-9)
+}
+
+/** Whether a Refinery (placed or in the Machine Inventory) may be set to a Recipe: the one check the Set Recipe action and the inspector share. */
+export function checkSetRecipe(state: Pick<GameState, 'machines'>, machineId: string, recipeId: RecipeId): Result<null> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (machine.defId !== 'refinery') return fail('fail.notRefinery')
+  return Object.hasOwn(RECIPE_DEFS, recipeId) ? ok(null) : fail('fail.recipeNotFound')
 }

@@ -26,8 +26,6 @@ export interface MachineDef {
   modSlots: number
   /** Whether the Shop stocks this Machine Def from a new game; Unlocks add the rest. */
   availableAtStart: boolean
-  /** Whether this Machine Def's Placement rule exists yet; the Refinery's arrives with Refining (T012), which removes this flag. */
-  placeable: boolean
   basePrice: number
   repairPerPoint: number
   movePerTile: number
@@ -42,7 +40,6 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.25,
     modSlots: 2,
     availableAtStart: true,
-    placeable: true,
     basePrice: 60,
     repairPerPoint: 0.3,
     movePerTile: 2,
@@ -55,7 +52,6 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.8,
     modSlots: 3,
     availableAtStart: false,
-    placeable: true,
     basePrice: 400,
     repairPerPoint: 1,
     movePerTile: 5,
@@ -68,12 +64,37 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     wearRate: 0.15,
     modSlots: 2,
     availableAtStart: true,
-    placeable: false,
     basePrice: 150,
     repairPerPoint: 0.5,
     movePerTile: 4,
   },
 }
+
+export type RecipeId = 'oreToAlloy' | 'oreCrystalToAlloy'
+
+export interface RecipeDef {
+  id: RecipeId
+  nameId: StringId
+  /** Resources consumed per batch. */
+  inputs: Partial<Record<ResourceId, number>>
+  /** The Resource a batch makes. */
+  output: ResourceId
+  /** Units of the output per batch, before Efficiency. */
+  outputAmount: number
+}
+
+export const RECIPE_DEFS: Record<RecipeId, RecipeDef> = {
+  oreToAlloy: { id: 'oreToAlloy', nameId: 'recipe.oreToAlloy', inputs: { ore: 4 }, output: 'alloy', outputAmount: 1 },
+  oreCrystalToAlloy: { id: 'oreCrystalToAlloy', nameId: 'recipe.oreCrystalToAlloy', inputs: { ore: 2, crystal: 1 }, output: 'alloy', outputAmount: 2 },
+}
+
+/** The input Resources of a Recipe with their units per batch. */
+export function recipeInputs(recipe: RecipeDef): [ResourceId, number][] {
+  return Object.entries(recipe.inputs) as [ResourceId, number][]
+}
+
+/** The Recipe every new Refinery starts on. */
+export const DEFAULT_RECIPE: RecipeId = 'oreToAlloy'
 
 export interface ResourceDef {
   id: ResourceId
