@@ -1,5 +1,6 @@
 import { produce } from 'immer'
 import type { Draft } from 'immer'
+import { marketDrift } from './market'
 import { mining } from './mining'
 import { depositSpawn } from './spawn'
 import { stateRng } from './rng'
@@ -13,7 +14,7 @@ function clock(draft: Draft<GameState>, dt: number): void {
 }
 
 /** The Step's systems, in the order they run. */
-const PIPELINE: readonly System[] = [clock, depositSpawn, mining]
+const PIPELINE: readonly System[] = [clock, marketDrift, depositSpawn, mining]
 
 export function step(draft: Draft<GameState>, dt: number, rng: Rng): void {
   for (const system of PIPELINE) system(draft, dt, rng)

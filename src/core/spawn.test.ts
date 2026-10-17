@@ -7,8 +7,12 @@ import { isTileUnlocked } from './queries'
 import type { Rng } from './rng'
 import type { GameState, Tile } from './types'
 
-/** An Rng that returns the given draws in order, then 0.5 forever. */
-function scripted(draws: number[]): Rng {
+/** Market drift draws two numbers per Resource at the start of a Step, before Deposit spawn. */
+const MARKET_DRAWS = 6
+
+/** An Rng that returns the given draws in order (after the Market drift's), then 0.5 forever. */
+function scripted(spawnDraws: number[]): Rng {
+  const draws = [...Array<number>(MARKET_DRAWS).fill(0.5), ...spawnDraws]
   let i = 0
   return { next: () => (i < draws.length ? draws[i++]! : 0.5) }
 }
@@ -116,8 +120,11 @@ describe('Deposit spawn', () => {
 
   it('spawns in one 5 s Step as 0.1 s Steps do', () => {
     const state = roomy(9, 2)
-    const fine = advance(state, 5, 0.1)
-    const coarse = advance(state, 5, 5)
+    const constant = scripted([])
+    const fine = produce(state, (d) => {
+      for (let i = 0; i < 50; i++) step(d, 0.1, constant)
+    })
+    const coarse = stepWith(state, 5, constant)
     expect(coarse.grid.deposits).toHaveLength(state.grid.deposits.length + 1)
     expect(coarse.grid.deposits).toEqual(fine.grid.deposits)
     expect(coarse.grid.nextDepositSpawn).toBeCloseTo(fine.grid.nextDepositSpawn, 6)

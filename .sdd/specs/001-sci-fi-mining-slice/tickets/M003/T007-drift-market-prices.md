@@ -3,7 +3,7 @@ id: T007
 title: Drift Market Prices around their Base Prices
 milestone: M003
 blocked-by: [T003]
-status: todo
+status: done
 ---
 
 ## What to build

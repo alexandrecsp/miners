@@ -79,6 +79,15 @@ export const RESOURCE_DEFS: Record<ResourceId, ResourceDef> = {
   alloy: { id: 'alloy', nameId: 'resource.alloy', basePrice: 8, marketDepth: 400, baseStorageCap: 100 },
 }
 
+export const MARKET_DRIFT = {
+  /** Sim seconds for a price's gap to its Base Price to halve. */
+  halfLife: 120,
+  /** Typical deviation (stationary standard deviation) as a share of the Base Price. */
+  deviation: 0.15,
+  /** A Market Price never falls below this share of its Base Price. */
+  floor: 0.2,
+}
+
 export interface DepositDef {
   count: number
   minInUnlocked: number

@@ -1,5 +1,6 @@
 import { MachineInspector } from './hud/MachineInspector'
 import { MachineInventory } from './hud/MachineInventory'
+import { MarketPanel } from './hud/MarketPanel'
 import { Notice } from './hud/Notice'
 import { TopBar } from './hud/TopBar'
 import { GameCanvas } from './scene/GameCanvas'
@@ -10,6 +11,7 @@ export function App() {
       <GameCanvas />
       <TopBar />
       <MachineInventory />
+      <MarketPanel />
       <MachineInspector />
       <Notice />
     </main>
