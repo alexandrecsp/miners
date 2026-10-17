@@ -4,6 +4,7 @@ export type ResourceId = 'ore' | 'crystal' | 'alloy'
 export type MachineDefId = 'drill' | 'laserMiner' | 'refinery'
 export type StatName = 'rate' | 'efficiency' | 'durability'
 export type DepositResource = 'ore' | 'crystal'
+export type ModDefId = 'overclockedMotor' | 'precisionBit' | 'reinforcedCasing'
 export type WorksOn = DepositResource | 'empty'
 
 export const SAVE_VERSION = 1
@@ -68,6 +69,23 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     repairPerPoint: 0.5,
     movePerTile: 4,
   },
+}
+
+export interface ModDef {
+  id: ModDefId
+  nameId: StringId
+  stat: StatName
+  /** A multiplier scales the Stat; a flat bonus is added after the multipliers. */
+  kind: 'multiplier' | 'flat'
+  value: number
+  price: number
+  fits: readonly MachineDefId[]
+}
+
+export const MOD_DEFS: Record<ModDefId, ModDef> = {
+  overclockedMotor: { id: 'overclockedMotor', nameId: 'mod.overclockedMotor', stat: 'rate', kind: 'multiplier', value: 1.25, price: 80, fits: ['drill', 'laserMiner'] },
+  precisionBit: { id: 'precisionBit', nameId: 'mod.precisionBit', stat: 'efficiency', kind: 'flat', value: 0.2, price: 60, fits: ['drill', 'laserMiner'] },
+  reinforcedCasing: { id: 'reinforcedCasing', nameId: 'mod.reinforcedCasing', stat: 'durability', kind: 'multiplier', value: 1.3, price: 70, fits: ['drill', 'laserMiner'] },
 }
 
 export type RecipeId = 'oreToAlloy' | 'oreCrystalToAlloy'

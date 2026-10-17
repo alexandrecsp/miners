@@ -1,5 +1,5 @@
-import { isBroken, isMiner, MACHINE_DEFS, MAX_CONDITION, REPAIR_WEAR_DIVISOR, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { MachineDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
+import { isBroken, isMiner, MACHINE_DEFS, MOD_DEFS, MAX_CONDITION, REPAIR_WEAR_DIVISOR, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import type { MachineDefId, ModDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
 import { compareIds } from './ids'
 import { fail, ok } from './result'
 import type { Result } from './result'
@@ -76,10 +76,16 @@ export function checkMove(state: PlacementView & Pick<GameState, 'credits'>, mac
   return state.credits >= cost ? ok(cost) : fail('fail.notEnoughCredits')
 }
 
-/** The Effective Stats of a Machine; no Mods exist yet, so these are its Base Stats. */
-export function effectiveStats(machine: Pick<Machine, 'baseStats'>): Record<StatName, number> {
+/** The Effective Stats of a Machine: its Base Stats with the fitted Mods applied through the Effective Stat formula. */
+export function effectiveStats(machine: Pick<Machine, 'baseStats' | 'mods'>): Record<StatName, number> {
   const result = {} as Record<StatName, number>
-  for (const stat of STAT_NAMES) result[stat] = effectiveStat(machine.baseStats[stat], [], [])
+  const fitted = machine.mods.flatMap((id) => (id !== null && Object.hasOwn(MOD_DEFS, id) ? [MOD_DEFS[id as ModDefId]] : []))
+  for (const stat of STAT_NAMES) {
+    const forStat = fitted.filter((mod) => mod.stat === stat)
+    const multipliers = forStat.filter((mod) => mod.kind === 'multiplier').map((mod) => mod.value)
+    const flats = forStat.filter((mod) => mod.kind === 'flat').map((mod) => mod.value)
+    result[stat] = effectiveStat(machine.baseStats[stat], multipliers, flats)
+  }
   return result
 }
 
@@ -266,4 +272,37 @@ export function checkRepair(state: Pick<GameState, 'machines' | 'credits'>, mach
   if (machine.condition >= MAX_CONDITION) return fail('fail.conditionFull')
   const cost = repairCost(machine)
   return state.credits >= cost ? ok(cost) : fail('fail.notEnoughCredits')
+}
+
+/** Whether a Mod may be bought and what it costs: the one check the Buy Mod action and the Mods panel share. */
+export function checkBuyMod(state: Pick<GameState, 'credits'>, modId: ModDefId): Result<number> {
+  if (!Object.hasOwn(MOD_DEFS, modId)) return fail('fail.modNotFound')
+  const price = MOD_DEFS[modId].price
+  return state.credits >= price ? ok(price) : fail('fail.notEnoughCredits')
+}
+
+/** Whether a Mod Def fits a Machine Def. */
+export function modFits(modId: ModDefId, defId: MachineDefId): boolean {
+  return MOD_DEFS[modId].fits.includes(defId)
+}
+
+/** Whether a Mod from the Mod Inventory may be fitted to a Machine, and the index of the free Mod Slot it takes: the one check the Fit Mod action and the inspector share. */
+export function checkFitMod(state: Pick<GameState, 'machines' | 'modInventory'>, machineId: string, modId: ModDefId): Result<number> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (!Object.hasOwn(MOD_DEFS, modId)) return fail('fail.modNotFound')
+  if (!modFits(modId, machine.defId)) return fail('fail.modDoesNotFit')
+  if ((state.modInventory[modId] ?? 0) < 1) return fail('fail.modNotOwned')
+  const slot = machine.mods.indexOf(null)
+  return slot >= 0 ? ok(slot) : fail('fail.noFreeModSlot')
+}
+
+/** Whether the Mod in a Mod Slot may be removed, and which Mod it is: the one check the Remove Mod action and the inspector share. */
+export function checkRemoveMod(state: Pick<GameState, 'machines'>, machineId: string, slot: number): Result<ModDefId> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (!Number.isInteger(slot) || slot < 0 || slot >= machine.mods.length) return fail('fail.noSuchModSlot')
+  const fitted = machine.mods[slot]
+  if (fitted === null || fitted === undefined) return fail('fail.modSlotEmpty')
+  return ok(fitted as ModDefId)
 }

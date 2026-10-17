@@ -3,7 +3,7 @@ id: T016
 title: Buy Mods and fit them into Mod Slots
 milestone: M007
 blocked-by: [T005]
-status: todo
+status: done
 ---
 
 ## What to build
