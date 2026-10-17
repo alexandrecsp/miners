@@ -147,8 +147,15 @@ export const GRID_DEFS = {
   rocks: 200,
 }
 
-/** Output factor at 100% Condition; Wear (T014) will make it follow Condition. */
-export const FULL_CONDITION_OUTPUT_FACTOR = 1
+/** Whether a Condition is Broken: 0% or below. The one place that rule lives. */
+export function isBroken(condition: number): boolean {
+  return condition <= 0
+}
+
+/** The output factor of a Machine: 0.5 + 0.5 x Condition / 100 while Condition is above 0, and 0 when Broken. */
+export function outputFactor(condition: number): number {
+  return !isBroken(condition) ? 0.5 + (0.5 * condition) / 100 : 0
+}
 
 /** Whether a Machine Def mines Deposits (as opposed to working on Empty Tiles). */
 export function isMiner(defId: MachineDefId): boolean {
@@ -156,6 +163,12 @@ export function isMiner(defId: MachineDefId): boolean {
 }
 
 export const STARTING_CONDITION = 100
+
+/** The Condition a Repair restores. */
+export const MAX_CONDITION = 100
+
+/** Lifetime Wear that adds 100% to a Machine's Repair cost. */
+export const REPAIR_WEAR_DIVISOR = 1000
 export const STARTING_STORAGE_TIER = 1
 export const STARTING_CREDITS = 50
 export const STARTING_KIT: readonly MachineDefId[] = ['drill']

@@ -3,7 +3,7 @@ id: T014
 title: Wear Machines down until they break
 milestone: M006
 blocked-by: [T012]
-status: todo
+status: done
 ---
 
 ## What to build

@@ -44,7 +44,11 @@ describe('effectiveStats query', () => {
 
 describe('Mining', () => {
   it('adds Ore to Storage and shrinks the Deposit by yield over Efficiency', () => {
-    const { state } = scenario({ remaining: 1000 })
+    const { state: fresh } = scenario({ remaining: 1000 })
+    // A near-indestructible Drill keeps Wear from changing the yield being measured.
+    const state = produce(fresh, (d) => {
+      d.machines[0]!.baseStats.durability = 1e9
+    })
     const next = advance(state, 10, 0.1)
     expect(next.storage.ore.amount).toBeCloseTo(10, 6)
     expect(next.grid.deposits[0]!.remaining).toBeCloseTo(987.5, 6)

@@ -3,7 +3,7 @@ id: T015
 title: Repair a Machine
 milestone: M006
 blocked-by: [T014]
-status: todo
+status: done
 ---
 
 ## What to build

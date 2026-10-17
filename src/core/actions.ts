@@ -1,7 +1,7 @@
 import { produce } from 'immer'
-import { SHOP, STARTING_CONDITION } from './defs'
+import { MAX_CONDITION, SHOP } from './defs'
 import type { RecipeId, ResourceId } from './defs'
-import { checkBuyOffer, checkMove, checkPlacement, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
+import { checkBuyOffer, checkMove, checkPlacement, checkRepair, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
 import { stateRng } from './rng'
 import { nextId } from './ids'
 import { fillShop } from './shop'
@@ -18,6 +18,7 @@ export type PlayerAction =
   | { kind: 'buyOffer'; machineId: string }
   | { kind: 'refreshShop' }
   | { kind: 'setRecipe'; machineId: string; recipeId: RecipeId }
+  | { kind: 'repair'; machineId: string }
 
 /** Apply a Player Action: the next Game State, or a failure reason with the state untouched. */
 export function applyAction(state: GameState, action: PlayerAction): Result<GameState> {
@@ -62,12 +63,8 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
         produce(state, (draft) => {
           draft.credits -= offer.price
           draft.shop.offers = draft.shop.offers.filter((o) => o.machine.id !== action.machineId)
-          draft.machines.push({
-            ...structuredClone(offer.machine),
-            id: nextId(draft, 'm'),
-            condition: STARTING_CONDITION,
-            lifetimeWear: 0,
-          })
+          // The Offer's Machine was built by buildMachine: full Condition, no Wear.
+          draft.machines.push({ ...structuredClone(offer.machine), id: nextId(draft, 'm') })
         }),
       )
     }
@@ -87,6 +84,16 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
       return ok(
         produce(state, (draft) => {
           draft.machines.find((m) => m.id === action.machineId)!.recipeId = action.recipeId
+        }),
+      )
+    }
+    case 'repair': {
+      const check = checkRepair(state, action.machineId)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.credits -= check.value
+          draft.machines.find((m) => m.id === action.machineId)!.condition = MAX_CONDITION
         }),
       )
     }
