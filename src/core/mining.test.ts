@@ -25,6 +25,7 @@ function scenario(opts: { remaining?: number; rate?: number; efficiency?: number
   const state = produce(base, (d) => {
     d.grid.deposits = [{ id: 'd-test', tile, resource: 'ore', remaining: opts.remaining ?? 1000 }]
     d.grid.rocks = []
+    d.grid.nextDepositSpawn = 1e9
     const drill = d.machines[0]!
     drill.tile = tile
     drill.baseStats.rate = opts.rate ?? 1

@@ -3,7 +3,7 @@ id: T006
 title: Spawn new Deposits over time
 milestone: M002
 blocked-by: [T005]
-status: todo
+status: done
 ---
 
 ## What to build

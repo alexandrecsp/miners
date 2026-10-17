@@ -43,6 +43,8 @@ export interface GameState {
     unlockedSize: number
     deposits: Deposit[]
     rocks: Tile[]
+    /** Sim-clock time of the next Deposit spawn. */
+    nextDepositSpawn: number
   }
   machines: Machine[]
   modInventory: Record<string, number>

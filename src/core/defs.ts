@@ -90,6 +90,14 @@ export const DEPOSIT_DEFS: Record<DepositResource, DepositDef> = {
   crystal: { count: 50, minInUnlocked: 2, amount: { min: 200, max: 600 } },
 }
 
+export const DEPOSIT_SPAWN = {
+  /** Mean sim seconds between spawns (exponential intervals). */
+  meanInterval: 30,
+  oreShare: 0.75,
+  /** The Unlocked Area holds at most one Deposit per this many Tiles. */
+  tilesPerDeposit: 12,
+}
+
 export const GRID_DEFS = {
   size: 32,
   startUnlockedSize: 12,
