@@ -2,7 +2,9 @@
 
 ## Context
 
-- The project folder holds only PROMPT.md; there is no code, package.json or git repository yet.
+- The project has no code or package.json yet; it holds PROMPT.md, CLAUDE.md (SDD block with check commands `npm test`, `npm run typecheck`, `npm run lint`) and `.sdd/`.
+- The project is a git repository on `main`; its first commit is `3eaebe8`.
+- `.sdd/config.json` leaves `commit-prefix` unset and sets `pause-between-milestones` to false.
 - PROMPT.md proposes the stack: three + @react-three/fiber + drei, postprocessing, optional rapier, zustand + immer, leva, vite.
 - PROMPT.md proposes the architecture: data-driven static defs (MachineDef, ResourceDef, UpgradeDef), machine instances with rolled stats and mods, effective stat = base × Π(mult) + Σ(add) as a pure function, a fixed ~10 Hz sim tick outside React, R3F that only reads the store, and a localStorage/IndexedDB save with lastSeen.
 - PROMPT.md proposes the visuals: HDRI lighting, PBR materials, dark fog, emissive + bloom, InstancedMesh for many objects, shader-driven beams, HTML/CSS UI overlay, and an orthographic isometric camera.
@@ -30,7 +32,16 @@
 18. Deposits: deposits are finite and deplete, and new ones appear over time, so machines get relocated.
 19. Slice goal: the slice is an open-ended sandbox with no win condition.
 20. Progression: milestone unlocks at thresholds such as credits earned or ore mined; unlocks include the Laser Miner, Refinery mods, storage tiers, more grid area and sell orders.
-21. Slice content: the Drill mines Ore (cheap, slow wear); the Laser Miner mines Ore and Crystal (fast, heavy wear, emissive beam); the Refinery turns Ore and Crystal into Alloy; the resources are Ore, Crystal, Alloy and Credits.
+21. Slice content: the Drill mines Ore (cheap, slow wear); the Laser Miner mines Ore and Crystal (fast, heavy wear, emissive beam); the Refinery makes Alloy (recipes in 24); the resources are Ore, Crystal, Alloy and Credits.
+22. Upgrades and mods: mods are bought for credits from a fixed catalogue (UpgradeDefs) and fitted into a limited number of slots on each machine; each mod adds one multiplier or flat bonus to one stat; miner mods are available from the start and Refinery mods unlock later.
+23. Removing mods: a fitted mod can be taken off; it goes to a mod inventory and can be fitted on another machine.
+24. Refinery recipes: there are two recipes, Ore → Alloy (available from the start) and Ore + Crystal → Alloy (at a better ratio).
+25. Recipe choice: the player sets the recipe on each Refinery, and new Refineries start on Ore-only.
+26. Deposits: each deposit holds one resource (Ore or Crystal); the Drill fits only on Ore deposits, and the Laser Miner fits on either and mines what the deposit holds.
+27. Condition and repair: only condition (0–100%) is stored per machine, and rolled durability sets how fast it drops; a repair is instant, costs credits in proportion to the missing condition and restores it to 100%; lifetime wear makes each later repair cost more.
+28. Moving machines: moving a placed machine costs credits, scaled by the distance moved.
+29. Starting kit: a new player starts with one free Drill with average stats, waiting to be placed, plus a few credits.
+30. Efficiency: for miners, efficiency is resource yielded per unit of deposit used up, so higher efficiency makes a deposit last longer; for the Refinery, it is Alloy produced per unit of input; rate is speed, efficiency is yield.
 
 ## How
 

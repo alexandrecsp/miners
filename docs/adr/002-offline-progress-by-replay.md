@@ -1,0 +1,3 @@
+# Offline Progress by replaying the Step
+
+Offline Progress is computed by running the same Step used in live play over the time away (capped at 8 hours) with a coarse length of about 5 seconds, inside a single immer `produce`, rather than with a closed-form formula. Wear, Storage Caps, depleting Deposits, Market drift and Sell Orders interact in ways a closed form would have to duplicate and would drift from; replaying keeps one source of rules. The consequence is that every rule must give nearly the same result at a 0.1 s and a 5 s Step, so time-based quantities are always scaled by the Step's length.
