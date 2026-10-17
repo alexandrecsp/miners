@@ -3,7 +3,7 @@ id: T003
 title: Render the isometric Zone with the HUD top bar
 milestone: M001
 blocked-by: [T002]
-status: todo
+status: done
 ---
 
 ## What to build

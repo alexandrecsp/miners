@@ -3,7 +3,7 @@ id: T001
 title: Scaffold the project with core isolation and the display formatter
 milestone: M001
 blocked-by: []
-status: todo
+status: done
 ---
 
 ## What to build
