@@ -8,6 +8,8 @@ export type WorksOn = DepositResource | 'empty'
 
 export const SAVE_VERSION = 1
 
+export const STAT_NAMES: readonly StatName[] = ['rate', 'efficiency', 'durability']
+
 export const RESOURCE_IDS: readonly ResourceId[] = ['ore', 'crystal', 'alloy']
 
 export interface Range {

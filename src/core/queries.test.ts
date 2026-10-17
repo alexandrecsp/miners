@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { newGame } from './newGame'
-import { isTileUnlocked, storageCap } from './queries'
+import { inventoryMachines, isTileUnlocked, machineAt, storageCap } from './queries'
 
 describe('storageCap', () => {
   it('is the Tier 1 cap for a new game', () => {
@@ -24,5 +24,16 @@ describe('isTileUnlocked', () => {
     expect(isTileUnlocked(grid, { x: 21, y: 21 })).toBe(true)
     expect(isTileUnlocked(grid, { x: 9, y: 15 })).toBe(false)
     expect(isTileUnlocked(grid, { x: 15, y: 22 })).toBe(false)
+  })
+})
+
+describe('inventoryMachines and machineAt', () => {
+  it('lists unplaced Machines and finds a Machine by its Tile', () => {
+    const state = newGame(1)
+    expect(inventoryMachines(state)).toHaveLength(1)
+    expect(machineAt(state, { x: 11, y: 11 })).toBeUndefined()
+    const placed = { ...state, machines: state.machines.map((m) => ({ ...m, tile: { x: 11, y: 11 } })) }
+    expect(inventoryMachines(placed)).toHaveLength(0)
+    expect(machineAt(placed, { x: 11, y: 11 })?.id).toBe(state.machines[0]!.id)
   })
 })
