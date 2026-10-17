@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+@import '@fontsource/orbitron/600.css';
+@import '@fontsource/inter/400.css';
+
+@theme {
+  --color-void: #05070d;
+  --color-panel: #0d1424;
+  --color-edge: #1c2b4a;
+  --color-ore: #e8a33d;
+  --color-crystal: #5ee6ff;
+  --color-alloy: #b6c2d9;
+  --color-accent: #3df5c4;
+  --color-ink: #d6e2ff;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --shadow-glow: 0 0 12px 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+body {
+  margin: 0;
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
