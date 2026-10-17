@@ -96,6 +96,14 @@ export const GRID_DEFS = {
   rocks: 200,
 }
 
+/** Output factor at 100% Condition; Wear (T014) will make it follow Condition. */
+export const FULL_CONDITION_OUTPUT_FACTOR = 1
+
+/** Whether a Machine Def mines Deposits (as opposed to working on Empty Tiles). */
+export function isMiner(defId: MachineDefId): boolean {
+  return !MACHINE_DEFS[defId].worksOn.includes('empty')
+}
+
 export const STARTING_CONDITION = 100
 export const STARTING_STORAGE_TIER = 1
 export const STARTING_CREDITS = 50

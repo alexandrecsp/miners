@@ -3,7 +3,7 @@ id: T005
 title: Mine Ore into Storage within Storage Caps
 milestone: M002
 blocked-by: [T004]
-status: todo
+status: done
 ---
 
 ## What to build

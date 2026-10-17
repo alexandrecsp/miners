@@ -1,9 +1,10 @@
-import { MACHINE_DEFS, RESOURCE_DEFS, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { ResourceId } from './defs'
+import { MACHINE_DEFS, RESOURCE_DEFS, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import type { ResourceId, StatName } from './defs'
 import { fail, ok } from './result'
 import type { Result } from './result'
+import { effectiveStat } from './stats'
 import { sameTile } from './tile'
-import type { GameState, GridShape, Machine, Tile } from './types'
+import type { Deposit, GameState, GridShape, Machine, Tile } from './types'
 
 /** The part of the Game State the Placement check reads. */
 export type PlacementView = Pick<GameState, 'machines' | 'grid'>
@@ -16,9 +17,14 @@ export function isTileUnlocked(grid: GridShape, tile: Tile): boolean {
 }
 
 /** The Storage Cap of a Resource at its current Storage Tier. */
-export function storageCap(state: GameState, resource: ResourceId): number {
+export function storageCap(state: Pick<GameState, 'storage'>, resource: ResourceId): number {
   const { tier } = state.storage[resource]
   return RESOURCE_DEFS[resource].baseStorageCap * STORAGE_TIER_MULTIPLIER ** (tier - 1)
+}
+
+/** The room left under a Resource's Storage Cap. */
+export function storageRoom(state: Pick<GameState, 'storage'>, resource: ResourceId): number {
+  return Math.max(0, storageCap(state, resource) - state.storage[resource].amount)
 }
 
 /**
@@ -38,6 +44,41 @@ export function checkPlacement(state: PlacementView, machineId: string, tile: Ti
   if (deposit) return worksOn.includes(deposit.resource) ? ok(null) : fail('fail.wrongDeposit')
   if (state.grid.rocks.some(isTarget)) return fail('fail.tileHasRock')
   return worksOn.includes('empty') ? ok(null) : fail('fail.noDeposit')
+}
+
+/** The Effective Stats of a Machine; no Mods exist yet, so these are its Base Stats. */
+export function effectiveStats(machine: Pick<Machine, 'baseStats'>): Record<StatName, number> {
+  const result = {} as Record<StatName, number>
+  for (const stat of STAT_NAMES) result[stat] = effectiveStat(machine.baseStats[stat], [], [])
+  return result
+}
+
+/** The Deposit under a placed Machine that it can mine, if any. */
+export function minableDepositAt(
+  state: Pick<GameState, 'grid'>,
+  machine: Pick<Machine, 'defId' | 'tile'>,
+): Deposit | undefined {
+  const tile = machine.tile
+  if (!tile) return undefined
+  const deposit = state.grid.deposits.find((d) => sameTile(d.tile, tile))
+  return deposit && MACHINE_DEFS[machine.defId].worksOn.includes(deposit.resource) ? deposit : undefined
+}
+
+export type IdleReason = 'noDeposit' | 'storageFull'
+
+export type MachineStatus = { kind: 'inventory' } | { kind: 'working' } | { kind: 'idle'; reason: IdleReason }
+
+/**
+ * The Machine Status: not placed, Working when the Mining system would produce from it now
+ * (a minable Deposit and Storage room), otherwise Idle with its reason.
+ */
+export function machineStatus(state: GameState, machineId: string): MachineStatus {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine || !machine.tile) return { kind: 'inventory' }
+  const deposit = minableDepositAt(state, machine)
+  if (!deposit) return { kind: 'idle', reason: 'noDeposit' }
+  if (storageRoom(state, deposit.resource) <= 0) return { kind: 'idle', reason: 'storageFull' }
+  return { kind: 'working' }
 }
 
 /** The Machines owned but not placed. */
