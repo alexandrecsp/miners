@@ -11,6 +11,8 @@ const STRINGS = {
   'hud.of': 'of',
   'hud.price': 'Price',
   'hud.market': 'Market',
+  'hud.sell': 'Sell',
+  'hud.sellAll': 'All',
   'hud.basePrice': 'Base',
   'hud.priceUp': 'Price rising',
   'hud.priceDown': 'Price falling',
@@ -35,6 +37,8 @@ const STRINGS = {
   'fail.tileOccupied': 'Another Machine is already on that Tile.',
   'fail.wrongDeposit': 'This Machine cannot mine that kind of Deposit.',
   'fail.tileHasRock': 'A Rock blocks that Tile.',
+  'fail.invalidAmount': 'Enter an amount above zero.',
+  'fail.notEnoughResource': 'Storage does not hold that much.',
   'fail.noDeposit': 'This Machine needs a Deposit on the Tile.',
 } as const
 

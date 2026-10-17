@@ -1,9 +1,10 @@
 import { useRef } from 'react'
-import { RESOURCE_DEFS, RESOURCE_IDS } from '../core/defs'
+import { RESOURCE_DEFS, RESOURCE_IDS, SELL_AMOUNTS } from '../core/defs'
 import type { ResourceId } from '../core/defs'
 import { formatNumber } from '../core/format'
 import { t } from '../core/strings'
-import { useGameStore } from '../store/gameStore'
+import { checkSaleAmount, saleOutcomeAt } from '../core/queries'
+import { dispatch, useGameStore } from '../store/gameStore'
 
 type PriceDirection = 'up' | 'down' | 'flat'
 
@@ -23,12 +24,32 @@ function useDirection(price: number): PriceDirection {
   return direction.current
 }
 
+function SellButton({ resource, amount }: { resource: ResourceId; amount: number | 'all' }) {
+  const stored = useGameStore((s) => s.game.storage[resource].amount)
+  const price = useGameStore((s) => s.game.market[resource])
+  const units = amount === 'all' ? stored : amount
+  const label = amount === 'all' ? t('hud.sellAll') : formatNumber(amount)
+  const sellable = checkSaleAmount(stored, units).ok
+  const preview = sellable ? saleOutcomeAt(price, resource, units).credits : 0
+  return (
+    <button
+      type="button"
+      disabled={!sellable}
+      className="border border-edge px-2 py-0.5 text-xs hover:border-accent disabled:opacity-40 disabled:hover:border-edge"
+      onClick={() => dispatch({ kind: 'sell', resource, amount: units })}
+    >
+      {label} +{formatNumber(preview)}
+    </button>
+  )
+}
+
 function MarketRow({ resource }: { resource: ResourceId }) {
   const price = useGameStore((s) => s.game.market[resource])
   const direction = useDirection(price)
   const def = RESOURCE_DEFS[resource]
   return (
-    <li className="flex items-center justify-between gap-3">
+    <li className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-3">
       <span>{t(def.nameId)}</span>
       <span className="flex items-baseline gap-2">
         {direction !== 'flat' && (
@@ -41,6 +62,14 @@ function MarketRow({ resource }: { resource: ResourceId }) {
           {t('hud.basePrice')} {formatNumber(def.basePrice, { price: true })}
         </span>
       </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        <span className="text-xs text-ink/60">{t('hud.sell')}</span>
+        {SELL_AMOUNTS.map((amount) => (
+          <SellButton key={amount} resource={resource} amount={amount} />
+        ))}
+        <SellButton resource={resource} amount="all" />
+      </div>
     </li>
   )
 }

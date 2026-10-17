@@ -101,3 +101,31 @@ export function placementTiles(state: PlacementView, machineId: string): Tile[] 
   }
   return tiles
 }
+
+/** What a Sale of `amount` does at Market Price `price`: the Credits earned, p x D x (1 - e^(-a/D)), and the price left, p x e^(-a/D). */
+export function saleOutcomeAt(price: number, resource: ResourceId, amount: number): { credits: number; price: number } {
+  const depth = RESOURCE_DEFS[resource].marketDepth
+  const decay = Math.exp(-amount / depth)
+  return { credits: price * depth * (1 - decay), price: price * decay }
+}
+
+/** What a Sale of `amount` does at the Resource's current Market Price. */
+export function saleOutcome(
+  state: Pick<GameState, 'market'>,
+  resource: ResourceId,
+  amount: number,
+): { credits: number; price: number } {
+  return saleOutcomeAt(state.market[resource], resource, amount)
+}
+
+/** Whether `amount` may be sold from `stored` units: the one check the Sell action and the Market panel share. */
+export function checkSaleAmount(stored: number, amount: number): Result<null> {
+  if (!(amount > 0)) return fail('fail.invalidAmount')
+  if (amount > stored) return fail('fail.notEnoughResource')
+  return ok(null)
+}
+
+/** Whether `amount` of a Resource may be sold from Storage. */
+export function checkSale(state: Pick<GameState, 'storage'>, resource: ResourceId, amount: number): Result<null> {
+  return checkSaleAmount(state.storage[resource].amount, amount)
+}

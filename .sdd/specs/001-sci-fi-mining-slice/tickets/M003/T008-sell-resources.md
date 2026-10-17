@@ -3,7 +3,7 @@ id: T008
 title: Sell Resources with Price Impact
 milestone: M003
 blocked-by: [T005, T007]
-status: todo
+status: done
 ---
 
 ## What to build

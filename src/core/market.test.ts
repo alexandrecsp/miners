@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { MARKET_DRIFT, RESOURCE_DEFS, RESOURCE_IDS } from './defs'
 import type { ResourceId } from './defs'
+import { applyAction } from './actions'
+import type { PlayerAction } from './actions'
+import { saleOutcome } from './queries'
 import { newGame } from './newGame'
 import { advance } from './step'
 import type { GameState } from './types'
@@ -64,5 +67,70 @@ describe('Market drift', () => {
   it('gives the same price path for the same seed', () => {
     expect(advance(newGame(5), 3600, 1).market).toEqual(advance(newGame(5), 3600, 1).market)
     expect(advance(newGame(5), 3600, 1).market).not.toEqual(advance(newGame(6), 3600, 1).market)
+  })
+})
+
+describe('Sell action', () => {
+  const sell = (resource: ResourceId, amount: number): PlayerAction => ({ kind: 'sell', resource, amount })
+  const stocked = (): GameState => {
+    const s = newGame(3)
+    s.storage.ore.amount = 150
+    s.credits = 0
+    return s
+  }
+
+  it('earns p x D x (1 - e^(-a/D)), removes the amount and leaves the price at p x e^(-a/D)', () => {
+    const s = stocked()
+    s.market.ore = 2
+    const result = applyAction(s, sell('ore', 100))
+    if (!result.ok) throw new Error(result.reason)
+    // 2 * 2000 * (1 - e^(-0.05)) = 195.0823; price 2 * e^(-0.05) = 1.9024588...
+    expect(result.value.credits).toBeCloseTo(195.0823, 3)
+    expect(result.value.storage.ore.amount).toBe(50)
+    expect(result.value.market.ore).toBeCloseTo(1.902459, 5)
+    expect(saleOutcome(s, 'ore', 100).credits).toBeCloseTo(195.0823, 3)
+  })
+
+  it('earns the same for one Sale of 100 as for ten Sales of 10', () => {
+    const s = stocked()
+    const once = applyAction(s, sell('ore', 100))
+    let split: GameState = s
+    for (let i = 0; i < 10; i++) {
+      const r = applyAction(split, sell('ore', 10))
+      if (!r.ok) throw new Error(r.reason)
+      split = r.value
+    }
+    if (!once.ok) throw new Error('setup')
+    expect(split.credits).toBeCloseTo(once.value.credits, 6)
+  })
+
+  it('fails for more than Storage holds, zero or a negative amount, changing nothing', () => {
+    const s = stocked()
+    const before = structuredClone(s)
+    for (const amount of [151, 0, -5]) {
+      const r = applyAction(s, sell('ore', amount))
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.reason).toBe(amount > 0 ? 'fail.notEnoughResource' : 'fail.invalidAmount')
+    }
+    expect(s).toEqual(before)
+  })
+
+  it('lets the price recover towards its Base Price after a large Sale', () => {
+    const s = stocked()
+    s.storage.ore.amount = 5000
+    const sold = applyAction(s, sell('ore', 5000))
+    if (!sold.ok) throw new Error('setup')
+    const low = sold.value.market.ore
+    expect(low).toBeLessThan(0.1)
+    const finals = []
+    for (let seed = 1; seed <= 50; seed++) finals.push(advance({ ...sold.value, generator: seed }, 600, 5).market.ore)
+    expect(mean(finals)).toBeGreaterThan(low + 0.5)
+  })
+
+  it('never sells Storage on its own while Advancing', () => {
+    const s = stocked()
+    const after = advance(s, 60, 5)
+    expect(after.storage.ore.amount).toBe(150)
+    expect(after.credits).toBe(0)
   })
 })
