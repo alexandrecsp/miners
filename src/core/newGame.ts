@@ -13,6 +13,7 @@ import {
 import type { DepositResource, MachineDefId, ResourceId, StatName } from './defs'
 import { isTileUnlocked } from './queries'
 import { stateRng } from './rng'
+import { drawNextSpawn } from './spawn'
 import type { Rng } from './rng'
 import type { GameState, Machine, StorageEntry, Tile } from './types'
 
@@ -57,7 +58,7 @@ export function newGame(seed: number): GameState {
     idCounter: 0,
     credits: STARTING_CREDITS,
     storage: fillRecord((): StorageEntry => ({ amount: 0, tier: STARTING_STORAGE_TIER })),
-    grid: { size, unlockedSize: startUnlockedSize, deposits: [], rocks: [] },
+    grid: { size, unlockedSize: startUnlockedSize, deposits: [], rocks: [], nextDepositSpawn: 0 },
     machines: [],
     modInventory: {},
     market: fillRecord((r) => RESOURCE_DEFS[r].basePrice),
@@ -89,5 +90,6 @@ export function newGame(seed: number): GameState {
   for (let i = 0; i < GRID_DEFS.rocks; i++) state.grid.rocks.push(takeTile(rng, free))
 
   for (const defId of STARTING_KIT) state.machines.push(middleStatsMachine(state, defId))
+  state.grid.nextDepositSpawn = drawNextSpawn(rng, state.simClock)
   return state
 }

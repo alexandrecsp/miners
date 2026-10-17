@@ -42,4 +42,8 @@ describe('formatNumber', () => {
     expect(formatNumber(1234, { price: true })).toBe('1.2K')
     expect(formatNumber(150, { price: true })).toBe('150')
   })
+  it('formats stats with two decimals', () => {
+    expect(formatNumber(1.05, { stat: true })).toBe('1.05')
+    expect(formatNumber(0.8, { stat: true })).toBe('0.80')
+  })
 })

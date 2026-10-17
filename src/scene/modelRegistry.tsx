@@ -24,6 +24,10 @@ export interface InstancedModel {
 
 export interface MachineModelProps {
   defId: MachineDefId
+  /** Drawn translucent, as the placement preview. */
+  ghost?: boolean
+  /** The pointer is over the Machine: its glow brightens. */
+  hovered?: boolean
 }
 
 /** Hash of a Tile to a stable value in [0, 1), so scenery varies without randomness. */
@@ -89,18 +93,18 @@ const MACHINE_COLORS: Record<MachineDefId, { body: PaletteKey; glow: PaletteKey 
   refinery: { body: 'refinery', glow: 'refineryGlow' },
 }
 
-function ProceduralMachine({ defId }: MachineModelProps) {
+function ProceduralMachine({ defId, ghost, hovered }: MachineModelProps) {
   const body = scenePalette(MACHINE_COLORS[defId].body)
   const glow = scenePalette(MACHINE_COLORS[defId].glow)
   return (
     <group>
       <mesh position={[0, 0.3, 0]}>
         <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshStandardMaterial color={body} metalness={0.8} roughness={0.35} />
+        <meshStandardMaterial color={body} metalness={0.8} roughness={0.35} emissive={body} emissiveIntensity={hovered ? 0.5 : 0} transparent={ghost} opacity={ghost ? 0.5 : 1} />
       </mesh>
       <mesh position={[0, 0.68, 0]}>
         <boxGeometry args={[0.24, 0.16, 0.24]} />
-        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={2} />
+        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={hovered ? 5 : 2} transparent={ghost} opacity={ghost ? 0.5 : 1} />
       </mesh>
     </group>
   )

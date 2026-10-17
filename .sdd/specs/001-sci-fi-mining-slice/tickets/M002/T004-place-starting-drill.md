@@ -3,7 +3,7 @@ id: T004
 title: Place the Starting Kit Drill and inspect it
 milestone: M002
 blocked-by: [T003]
-status: todo
+status: done
 ---
 
 ## What to build

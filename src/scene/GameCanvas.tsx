@@ -1,7 +1,10 @@
 import { Canvas } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
-import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
+import { Bloom, EffectComposer, Outline, Selection, Vignette } from '@react-three/postprocessing'
 import { CAMERA_POSITION, CAMERA_ZOOM_START, CameraRig } from './CameraRig'
+import { ClickHandler } from './ClickHandler'
+import { Machines } from './Machines'
+import { PlacementPreview } from './PlacementPreview'
 import { TileHighlight } from './TileHighlight'
 import { TilePicker } from './TilePicker'
 import { scenePalette } from './palette'
@@ -31,14 +34,20 @@ export function GameCanvas() {
     >
       <color attach="background" args={[scenePalette('fog')]} />
       <Lighting />
-      <Zone />
+      <Selection>
+        <Zone />
+        <Machines />
+        <PlacementPreview />
       <TileHighlight />
       <TilePicker />
+      <ClickHandler />
       <CameraRig />
       <EffectComposer>
         <Bloom intensity={0.9} luminanceThreshold={0.8} luminanceSmoothing={0.2} mipmapBlur />
         <Vignette eskil={false} offset={0.2} darkness={0.7} />
+        <Outline blur edgeStrength={6} visibleEdgeColor={scenePalette('highlight')} hiddenEdgeColor={scenePalette('highlight')} />
       </EffectComposer>
+      </Selection>
     </Canvas>
   )
 }

@@ -8,6 +8,8 @@ export type WorksOn = DepositResource | 'empty'
 
 export const SAVE_VERSION = 1
 
+export const STAT_NAMES: readonly StatName[] = ['rate', 'efficiency', 'durability']
+
 export const RESOURCE_IDS: readonly ResourceId[] = ['ore', 'crystal', 'alloy']
 
 export interface Range {
@@ -88,10 +90,26 @@ export const DEPOSIT_DEFS: Record<DepositResource, DepositDef> = {
   crystal: { count: 50, minInUnlocked: 2, amount: { min: 200, max: 600 } },
 }
 
+export const DEPOSIT_SPAWN = {
+  /** Mean sim seconds between spawns (exponential intervals). */
+  meanInterval: 30,
+  oreShare: 0.75,
+  /** The Unlocked Area holds at most one Deposit per this many Tiles. */
+  tilesPerDeposit: 12,
+}
+
 export const GRID_DEFS = {
   size: 32,
   startUnlockedSize: 12,
   rocks: 200,
+}
+
+/** Output factor at 100% Condition; Wear (T014) will make it follow Condition. */
+export const FULL_CONDITION_OUTPUT_FACTOR = 1
+
+/** Whether a Machine Def mines Deposits (as opposed to working on Empty Tiles). */
+export function isMiner(defId: MachineDefId): boolean {
+  return !MACHINE_DEFS[defId].worksOn.includes('empty')
 }
 
 export const STARTING_CONDITION = 100

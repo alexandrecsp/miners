@@ -19,6 +19,8 @@ const TOKENS = {
   laserMinerGlow: '--color-scene-laser-miner-glow',
   refinery: '--color-scene-refinery',
   refineryGlow: '--color-scene-refinery-glow',
+  statusWorking: '--color-scene-status-working',
+  statusIdle: '--color-scene-status-idle',
 } as const
 
 export type PaletteKey = keyof typeof TOKENS
