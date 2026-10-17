@@ -11,6 +11,7 @@ import {
   STARTING_STORAGE_TIER,
 } from './defs'
 import type { DepositResource, MachineDefId, ResourceId, StatName } from './defs'
+import { isTileUnlocked } from './queries'
 import { stateRng } from './rng'
 import type { Rng } from './rng'
 import type { GameState, Machine, StorageEntry, Tile } from './types'
@@ -18,12 +19,6 @@ import type { GameState, Machine, StorageEntry, Tile } from './types'
 export function nextId(state: GameState, prefix: string): string {
   state.idCounter += 1
   return `${prefix}${state.idCounter}`
-}
-
-function inUnlockedArea(tile: Tile, grid: GameState['grid']): boolean {
-  const margin = (grid.size - grid.unlockedSize) / 2
-  const inRange = (v: number) => v >= margin && v < margin + grid.unlockedSize
-  return inRange(tile.x) && inRange(tile.y)
 }
 
 function middleStatsMachine(state: GameState, defId: MachineDefId): Machine {
@@ -71,7 +66,7 @@ export function newGame(seed: number): GameState {
 
   const free: Tile[] = []
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) free.push({ x, y })
-  const inside = (tile: Tile) => inUnlockedArea(tile, state.grid)
+  const inside = (tile: Tile) => isTileUnlocked(state.grid, tile)
 
   const spawnDeposit = (resource: DepositResource, tile: Tile) => {
     const { min, max } = DEPOSIT_DEFS[resource].amount

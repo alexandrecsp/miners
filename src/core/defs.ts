@@ -65,15 +65,16 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
 
 export interface ResourceDef {
   id: ResourceId
+  nameId: StringId
   basePrice: number
   marketDepth: number
   baseStorageCap: number
 }
 
 export const RESOURCE_DEFS: Record<ResourceId, ResourceDef> = {
-  ore: { id: 'ore', basePrice: 1, marketDepth: 2000, baseStorageCap: 200 },
-  crystal: { id: 'crystal', basePrice: 6, marketDepth: 400, baseStorageCap: 100 },
-  alloy: { id: 'alloy', basePrice: 8, marketDepth: 400, baseStorageCap: 100 },
+  ore: { id: 'ore', nameId: 'resource.ore', basePrice: 1, marketDepth: 2000, baseStorageCap: 200 },
+  crystal: { id: 'crystal', nameId: 'resource.crystal', basePrice: 6, marketDepth: 400, baseStorageCap: 100 },
+  alloy: { id: 'alloy', nameId: 'resource.alloy', basePrice: 8, marketDepth: 400, baseStorageCap: 100 },
 }
 
 export interface DepositDef {
@@ -103,3 +104,5 @@ export const PACING = {
   maxTicksPerCall: 10,
   gapThreshold: 1,
 }
+
+export const STORAGE_TIER_MULTIPLIER = 2.5

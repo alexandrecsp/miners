@@ -4,9 +4,12 @@ const STRINGS = {
   'machine.drill': 'Drill',
   'machine.laserMiner': 'Laser Miner',
   'machine.refinery': 'Refinery',
-  'placeholder.credits': 'Credits',
-  'placeholder.clock': 'Sim clock (s)',
-  'placeholder.hint': 'The Zone is being surveyed.',
+  'resource.ore': 'Ore',
+  'resource.crystal': 'Crystal',
+  'resource.alloy': 'Alloy',
+  'hud.credits': 'Credits',
+  'hud.of': 'of',
+  'hud.price': 'Price',
 } as const
 
 export type StringId = keyof typeof STRINGS

@@ -27,6 +27,9 @@ export interface StorageEntry {
   tier: number
 }
 
+/** The size data that decides which Tiles lie inside the Unlocked Area. */
+export type GridShape = Pick<GameState['grid'], 'size' | 'unlockedSize'>
+
 export interface GameState {
   saveVersion: number
   lastSeen: number
