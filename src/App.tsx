@@ -1,6 +1,7 @@
 import { MachineInspector } from './hud/MachineInspector'
 import { MachineInventory } from './hud/MachineInventory'
 import { MarketPanel } from './hud/MarketPanel'
+import { ModsPanel } from './hud/ModsPanel'
 import { Notice } from './hud/Notice'
 import { ShopPanel } from './hud/ShopPanel'
 import { TopBar } from './hud/TopBar'
@@ -14,6 +15,7 @@ export function App() {
       <MachineInventory />
       <MarketPanel />
       <ShopPanel />
+      <ModsPanel />
       <MachineInspector />
       <Notice />
     </main>

@@ -1,21 +1,26 @@
-import { isBroken, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
-import type { RecipeDef, StatName } from '../core/defs'
+import { isBroken, MACHINE_DEFS, MOD_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, STAT_NAMES } from '../core/defs'
+import type { ModDefId, RecipeDef, StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { checkRepair, effectiveStats, machineStatus, recipeOf, repairCost as repairCostOf } from '../core/queries'
+import { checkFitMod, checkRepair, effectiveStats, machineStatus, recipeOf, repairCost as repairCostOf } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
 import type { StringId } from '../core/strings'
 import { dispatch, useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
+import { modEffectText } from './modText'
 import { STAT_LABEL } from './statLabels'
 
-function StatList({ stats }: { stats: Record<StatName, number> }) {
+function StatCompare({ base, effective }: { base: Record<StatName, number>; effective: Record<StatName, number> }) {
   return (
-    <dl className="mt-1 grid grid-cols-2 gap-y-1 text-sm">
+    <dl className="mt-1 grid grid-cols-3 gap-y-1 text-sm">
+      <dt className="text-xs uppercase tracking-widest text-ink/60" />
+      <dd className="text-right text-xs uppercase tracking-widest text-ink/60">{t('hud.stats')}</dd>
+      <dd className="text-right text-xs uppercase tracking-widest text-ink/60">{t('hud.effectiveStats')}</dd>
       {STAT_NAMES.map((stat) => (
         <div key={stat} className="contents">
           <dt>{t(STAT_LABEL[stat])}</dt>
-          <dd className="text-right">{formatNumber(stats[stat], { stat: true })}</dd>
+          <dd className="text-right text-ink/60">{formatNumber(base[stat], { stat: true })}</dd>
+          <dd className="text-right">{formatNumber(effective[stat], { stat: true })}</dd>
         </div>
       ))}
     </dl>
@@ -54,10 +59,12 @@ export function MachineInspector() {
     const check = selectedId ? checkRepair(s.game, selectedId) : undefined
     return check ? (check.ok ? `ok:${check.value}` : check.reason) : ''
   })
+  const modInventory = useGameStore((s) => s.game.modInventory)
   if (!machine) return null
   const repairCost = repairCheck.startsWith('ok:') ? Number(repairCheck.slice(3)) : repairCostOf(machine)
   const repairBlocked = repairCheck.startsWith('ok:') ? undefined : (repairCheck as StringId)
   const effective = effectiveStats(machine)
+  const ownedMods = (Object.keys(MOD_DEFS) as ModDefId[]).filter((id) => (modInventory[id] ?? 0) > 0)
   const recipe = recipeOf(machine)
   return (
     <aside className="absolute bottom-4 right-4 w-64 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
@@ -124,10 +131,42 @@ export function MachineInspector() {
           </div>
         </div>
       )}
-      <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.effectiveStats')}</h3>
-      <StatList stats={effective} />
-      <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.stats')}</h3>
-      <StatList stats={machine.baseStats} />
+      <StatCompare base={machine.baseStats} effective={effective} />
+      <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.modSlots')}</h3>
+      <ul className="mt-1 flex flex-col gap-1 text-sm">
+        {machine.mods.map((fitted, index) => (
+          <li key={index} className="border border-edge/40 px-2 py-1">
+            {fitted !== null && Object.hasOwn(MOD_DEFS, fitted) ? (
+              <span>
+                {t(MOD_DEFS[fitted as ModDefId].nameId)}{' '}
+                <span className="text-xs text-ink/60">{modEffectText(MOD_DEFS[fitted as ModDefId])}</span>
+              </span>
+            ) : (
+              <span className="text-ink/60">{t('hud.modSlotEmpty')}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {ownedMods.length > 0 && (
+        <div className="mt-1 flex flex-col gap-1">
+          {ownedMods.map((id) => {
+            const check = checkFitMod({ machines: [machine], modInventory }, machine.id, id)
+            if (!check.ok && check.reason === 'fail.modDoesNotFit') return null
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-disabled={!check.ok}
+                title={check.ok ? undefined : t(check.reason)}
+                onClick={() => dispatch({ kind: 'fitMod', machineId: machine.id, modId: id })}
+                className={`border border-edge px-2 py-1 text-left text-xs hover:border-accent ${check.ok ? '' : 'opacity-40'}`}
+              >
+                <span className="uppercase tracking-widest">{t('hud.fit')}</span> {t(MOD_DEFS[id].nameId)} ({formatNumber(modInventory[id] ?? 0)})
+              </button>
+            )
+          })}
+        </div>
+      )}
       {machine.tile && (
         <button
           type="button"

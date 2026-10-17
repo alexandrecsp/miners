@@ -63,6 +63,19 @@ const STRINGS = {
   'hud.repairCost': 'Repair cost',
   'fail.notRefinery': 'Only a Refinery has a Recipe.',
   'fail.recipeNotFound': 'That Recipe does not exist.',
+  'mod.overclockedMotor': 'Overclocked Motor',
+  'mod.precisionBit': 'Precision Bit',
+  'mod.reinforcedCasing': 'Reinforced Casing',
+  'fail.modNotFound': 'That Mod does not exist.',
+  'fail.modNotOwned': 'That Mod is not in the Mod Inventory.',
+  'fail.noFreeModSlot': 'No free Mod Slot.',
+  'fail.modDoesNotFit': 'That Mod does not fit this Machine.',
+  'hud.mods': 'Mods',
+  'hud.modInventory': 'Mod Inventory',
+  'hud.modSlots': 'Mod Slots',
+  'hud.modSlotEmpty': 'Empty',
+  'hud.fit': 'Fit',
+  'hud.owned': 'Owned',
 } as const
 
 export type StringId = keyof typeof STRINGS
