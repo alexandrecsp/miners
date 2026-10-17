@@ -3,7 +3,7 @@ id: T011
 title: Move a placed Machine
 milestone: M004
 blocked-by: [T005]
-status: todo
+status: done
 ---
 
 ## What to build

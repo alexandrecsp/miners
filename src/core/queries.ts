@@ -27,14 +27,8 @@ export function storageRoom(state: Pick<GameState, 'storage'>, resource: Resourc
   return Math.max(0, storageCap(state, resource) - state.storage[resource].amount)
 }
 
-/**
- * Whether a Machine may be placed on a Tile: the one check the Place action and the Scene's
- * highlights share. Checks the Machine, the Unlocked Area, other Machines, then the Machine Def's Tile rule.
- */
-export function checkPlacement(state: PlacementView, machineId: string, tile: Tile): Result<null> {
-  const machine = state.machines.find((m) => m.id === machineId)
-  if (!machine) return fail('fail.machineNotFound')
-  if (machine.tile) return fail('fail.alreadyPlaced')
+/** Whether a Machine may stand on a Tile: the Def's rules, the Unlocked Area and other Machines. Shared by Placement and Move. */
+function checkTarget(state: PlacementView, machine: Machine, tile: Tile): Result<null> {
   if (!MACHINE_DEFS[machine.defId].placeable) return fail('fail.placementNotAvailable')
   if (!isTileUnlocked(state.grid, tile)) return fail('fail.outsideUnlocked')
   const isTarget = (a: Tile) => sameTile(a, tile)
@@ -45,6 +39,38 @@ export function checkPlacement(state: PlacementView, machineId: string, tile: Ti
   if (deposit) return worksOn.includes(deposit.resource) ? ok(null) : fail('fail.wrongDeposit')
   if (state.grid.rocks.some(isTarget)) return fail('fail.tileHasRock')
   return worksOn.includes('empty') ? ok(null) : fail('fail.noDeposit')
+}
+
+/**
+ * Whether a Machine may be placed on a Tile: the one check the Place action and the Scene's
+ * highlights share. Checks the Machine, the Unlocked Area, other Machines, then the Machine Def's Tile rule.
+ */
+export function checkPlacement(state: PlacementView, machineId: string, tile: Tile): Result<null> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (machine.tile) return fail('fail.alreadyPlaced')
+  return checkTarget(state, machine, tile)
+}
+
+/** The Move cost: the Machine Def's Move cost per Tile x the Manhattan distance, rounded up to whole Credits. */
+export function moveCost(defId: MachineDefId, from: Tile, to: Tile): number {
+  const distance = Math.abs(from.x - to.x) + Math.abs(from.y - to.y)
+  return Math.ceil(MACHINE_DEFS[defId].movePerTile * distance - 1e-9)
+}
+
+/**
+ * Whether a placed Machine may be moved to a Tile and what it costs: the one check the Move action and
+ * the Scene's highlights share. The Tile must pass the Placement rules; the Machine's own Tile fails.
+ */
+export function checkMove(state: PlacementView & Pick<GameState, 'credits'>, machineId: string, tile: Tile): Result<number> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (!machine.tile) return fail('fail.notPlaced')
+  if (sameTile(machine.tile, tile)) return fail('fail.sameTile')
+  const target = checkTarget(state, machine, tile)
+  if (!target.ok) return target
+  const cost = moveCost(machine.defId, machine.tile, tile)
+  return state.credits >= cost ? ok(cost) : fail('fail.notEnoughCredits')
 }
 
 /** The Effective Stats of a Machine; no Mods exist yet, so these are its Base Stats. */
@@ -98,6 +124,17 @@ export function placementTiles(state: PlacementView, machineId: string): Tile[] 
   for (let y = 0; y < state.grid.size; y++) {
     for (let x = 0; x < state.grid.size; x++) {
       if (checkPlacement(state, machineId, { x, y }).ok) tiles.push({ x, y })
+    }
+  }
+  return tiles
+}
+
+/** Every Tile of the Grid the placed Machine may be moved to, for highlighting; Credits are not considered. */
+export function moveTiles(state: PlacementView, machineId: string): Tile[] {
+  const tiles: Tile[] = []
+  for (let y = 0; y < state.grid.size; y++) {
+    for (let x = 0; x < state.grid.size; x++) {
+      if (checkMove({ ...state, credits: Infinity }, machineId, { x, y }).ok) tiles.push({ x, y })
     }
   }
   return tiles

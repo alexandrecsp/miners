@@ -6,9 +6,9 @@ import { scenePalette } from './palette'
 /** A subtle plate over the hovered Tile. */
 export function TileHighlight() {
   const hovered = useUiStore((s) => s.hoveredTile)
-  const placing = useUiStore((s) => s.mode.kind === 'placing')
+  const placing = useUiStore((s) => s.mode.kind !== 'none')
   const size = useGameStore((s) => s.game.grid.size)
-  // While placing, only the accepting Tiles are highlighted.
+  // While placing or moving, only the accepting Tiles are highlighted.
   if (!hovered || placing) return null
   const { x, z } = tileToWorld(hovered, size)
   return (

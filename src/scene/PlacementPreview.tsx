@@ -1,9 +1,12 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { Object3D } from 'three'
 import type { InstancedMesh } from 'three'
-import { placementTiles } from '../core/queries'
+import { Html } from '@react-three/drei'
+import { formatNumber } from '../core/format'
+import { checkMove, moveTiles, placementTiles } from '../core/queries'
+import { t } from '../core/strings'
 import { useGameStore } from '../store/gameStore'
-import { selectPlacingId, useUiStore } from '../store/uiStore'
+import { selectMovingId, selectPlacingId, useUiStore } from '../store/uiStore'
 import type { Tile } from '../core/types'
 import { tileToWorld } from './grid'
 import { getMachineModel } from './modelRegistry'
@@ -34,17 +37,24 @@ function AcceptingTiles({ tiles, size }: { tiles: Tile[]; size: number }) {
   )
 }
 
-/** While placing: highlights exactly the accepting Tiles and shows a ghost Machine on the hovered Tile. */
+/** While placing or moving: highlights exactly the accepting Tiles and shows a ghost Machine on the hovered Tile; for a Move, its cost too. */
 export function PlacementPreview() {
-  const machineId = useUiStore(selectPlacingId)
+  const placingId = useUiStore(selectPlacingId)
+  const movingId = useUiStore(selectMovingId)
+  const machineId = placingId ?? movingId
   const hovered = useUiStore((s) => s.hoveredTile)
   const machines = useGameStore((s) => s.game.machines)
   const grid = useGameStore((s) => s.game.grid)
-  const tiles = useMemo(() => (machineId ? placementTiles({ machines, grid }, machineId) : []), [machines, grid, machineId])
+  const tiles = useMemo(() => (
+    !machineId ? [] : movingId ? moveTiles({ machines, grid }, machineId) : placementTiles({ machines, grid }, machineId)
+  ), [machines, grid, machineId, movingId])
   const machine = machineId ? machines.find((m) => m.id === machineId) : undefined
   if (!machineId || !machine) return null
   const size = grid.size
   const Model = getMachineModel(machine.defId)
+  // The cost is a Query; Credits are not considered here so it shows even when the Move is unaffordable.
+  const moveCheck = movingId && hovered ? checkMove({ machines, grid, credits: Infinity }, movingId, hovered) : null
+  const cost = moveCheck?.ok ? moveCheck.value : null
   const ghost = hovered ? tileToWorld(hovered, size) : null
   return (
     <>
@@ -52,6 +62,11 @@ export function PlacementPreview() {
       {ghost && (
         <group position={[ghost.x, 0, ghost.z]}>
           <Model defId={machine.defId} ghost />
+          {cost !== null && (
+            <Html position={[0, 1.2, 0]} center className="pointer-events-none whitespace-nowrap border border-edge bg-panel/90 px-2 py-1 text-xs text-accent">
+              {t('hud.moveCost')}: {formatNumber(cost)}
+            </Html>
+          )}
         </group>
       )}
     </>

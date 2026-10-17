@@ -27,6 +27,11 @@ export function ClickHandler() {
         if (dispatch({ kind: 'place', machineId: uiState.mode.machineId, tile })) uiState.cancel()
         return
       }
+      if (uiState.mode.kind === 'moving') {
+        const { machineId } = uiState.mode
+        if (dispatch({ kind: 'move', machineId, tile })) uiState.select(machineId)
+        return
+      }
       const machine = machineAt(useGameStore.getState().game, tile)
       uiState.select(machine?.id ?? null)
     }

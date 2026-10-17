@@ -1,7 +1,7 @@
 import { produce } from 'immer'
 import { SHOP, STARTING_CONDITION } from './defs'
 import type { ResourceId } from './defs'
-import { checkBuyOffer, checkPlacement, checkSale, checkShopRefresh, saleOutcome } from './queries'
+import { checkBuyOffer, checkMove, checkPlacement, checkSale, checkShopRefresh, saleOutcome } from './queries'
 import { stateRng } from './rng'
 import { nextId } from './ids'
 import { fillShop } from './shop'
@@ -12,6 +12,7 @@ import type { GameState, Tile } from './types'
 /** Command: a player intent as a plain value. */
 export type PlayerAction =
   | { kind: 'place'; machineId: string; tile: Tile }
+  | { kind: 'move'; machineId: string; tile: Tile }
   | { kind: 'sell'; resource: ResourceId; amount: number }
   /** `machineId` is the Offer's id: the id of the rolled Machine it holds in the Shop Stock. */
   | { kind: 'buyOffer'; machineId: string }
@@ -25,6 +26,16 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
       if (!check.ok) return check
       return ok(
         produce(state, (draft) => {
+          draft.machines.find((m) => m.id === action.machineId)!.tile = { ...action.tile }
+        }),
+      )
+    }
+    case 'move': {
+      const check = checkMove(state, action.machineId, action.tile)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.credits -= check.value
           draft.machines.find((m) => m.id === action.machineId)!.tile = { ...action.tile }
         }),
       )
