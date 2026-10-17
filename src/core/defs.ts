@@ -24,6 +24,10 @@ export interface MachineDef {
   stats: Record<StatName, Range>
   wearRate: number
   modSlots: number
+  /** Whether the Shop stocks this Machine Def from a new game; Unlocks add the rest. */
+  availableAtStart: boolean
+  /** Whether this Machine Def's Placement rule exists yet; the Refinery's arrives with Refining (T012), which removes this flag. */
+  placeable: boolean
   basePrice: number
   repairPerPoint: number
   movePerTile: number
@@ -37,6 +41,8 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     stats: { rate: { min: 0.8, max: 1.2 }, efficiency: { min: 0.8, max: 1.2 }, durability: { min: 0.8, max: 1.2 } },
     wearRate: 0.25,
     modSlots: 2,
+    availableAtStart: true,
+    placeable: true,
     basePrice: 60,
     repairPerPoint: 0.3,
     movePerTile: 2,
@@ -48,6 +54,8 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     stats: { rate: { min: 2, max: 3 }, efficiency: { min: 0.8, max: 1.2 }, durability: { min: 0.8, max: 1.2 } },
     wearRate: 0.8,
     modSlots: 3,
+    availableAtStart: false,
+    placeable: true,
     basePrice: 400,
     repairPerPoint: 1,
     movePerTile: 5,
@@ -59,6 +67,8 @@ export const MACHINE_DEFS: Record<MachineDefId, MachineDef> = {
     stats: { rate: { min: 0.3, max: 0.5 }, efficiency: { min: 0.8, max: 1.2 }, durability: { min: 0.8, max: 1.2 } },
     wearRate: 0.15,
     modSlots: 2,
+    availableAtStart: true,
+    placeable: false,
     basePrice: 150,
     repairPerPoint: 0.5,
     movePerTile: 4,
@@ -133,6 +143,15 @@ export const PACING = {
   tick: 0.1,
   maxTicksPerCall: 10,
   gapThreshold: 1,
+}
+
+export const SHOP = {
+  offers: 4,
+  /** Sim seconds between timed Shop Refreshes. */
+  interval: 180,
+  refreshCost: 20,
+  /** An Offer's price as a share of the base price: min at roll quality 0, max at roll quality 1. */
+  price: { min: 0.7, max: 1.3 },
 }
 
 export const STORAGE_TIER_MULTIPLIER = 2.5

@@ -3,7 +3,7 @@ id: T010
 title: Buy an Offer and place it from the Machine Inventory
 milestone: M004
 blocked-by: [T009]
-status: todo
+status: done
 ---
 
 ## What to build

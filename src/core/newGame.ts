@@ -5,35 +5,24 @@ import {
   RESOURCE_DEFS,
   RESOURCE_IDS,
   SAVE_VERSION,
-  STARTING_CONDITION,
+  SHOP,
   STARTING_CREDITS,
   STARTING_KIT,
   STARTING_STORAGE_TIER,
 } from './defs'
 import type { DepositResource, MachineDefId, ResourceId, StatName } from './defs'
+import { nextId } from './ids'
 import { isTileUnlocked } from './queries'
 import { stateRng } from './rng'
+import { buildMachine, fillShop } from './shop'
 import { drawNextSpawn } from './spawn'
 import type { Rng } from './rng'
 import type { GameState, Machine, StorageEntry, Tile } from './types'
 
-export function nextId(state: GameState, prefix: string): string {
-  state.idCounter += 1
-  return `${prefix}${state.idCounter}`
-}
-
 function middleStatsMachine(state: GameState, defId: MachineDefId): Machine {
   const def = MACHINE_DEFS[defId]
   const mid = (name: StatName) => (def.stats[name].min + def.stats[name].max) / 2
-  return {
-    id: nextId(state, 'm'),
-    defId,
-    baseStats: { rate: mid('rate'), efficiency: mid('efficiency'), durability: mid('durability') },
-    condition: STARTING_CONDITION,
-    lifetimeWear: 0,
-    mods: Array.from({ length: def.modSlots }, () => null),
-    tile: null,
-  }
+  return buildMachine(nextId(state, 'm'), defId, { rate: mid('rate'), efficiency: mid('efficiency'), durability: mid('durability') })
 }
 
 function fillRecord<V>(make: (r: ResourceId) => V): Record<ResourceId, V> {
@@ -62,6 +51,7 @@ export function newGame(seed: number): GameState {
     machines: [],
     modInventory: {},
     market: fillRecord((r) => RESOURCE_DEFS[r].basePrice),
+    shop: { offers: [], nextRefresh: SHOP.interval },
   }
   const rng = stateRng(state)
 
@@ -91,5 +81,6 @@ export function newGame(seed: number): GameState {
 
   for (const defId of STARTING_KIT) state.machines.push(middleStatsMachine(state, defId))
   state.grid.nextDepositSpawn = drawNextSpawn(rng, state.simClock)
+  fillShop(state, rng)
   return state
 }

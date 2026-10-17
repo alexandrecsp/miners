@@ -4,15 +4,9 @@ import { formatNumber } from '../core/format'
 import { effectiveStats, machineStatus } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
-import type { StringId } from '../core/strings'
 import { useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
-
-const STAT_LABEL: Record<(typeof STAT_NAMES)[number], StringId> = {
-  rate: 'stat.rate',
-  efficiency: 'stat.efficiency',
-  durability: 'stat.durability',
-}
+import { STAT_LABEL } from './statLabels'
 
 function StatList({ stats }: { stats: Record<StatName, number> }) {
   return (
@@ -43,6 +37,8 @@ export function MachineInspector() {
   const selectedId = useUiStore((s) => s.selectedMachineId)
   const machine = useGameStore((s) => s.game.machines.find((m) => m.id === selectedId))
   const cancel = useUiStore((s) => s.cancel)
+  const startMoving = useUiStore((s) => s.startMoving)
+  const moving = useUiStore((s) => s.mode.kind === 'moving')
   const status = useGameStore((s) => (selectedId ? statusText(machineStatus(s.game, selectedId)) : ''))
   if (!machine) return null
   const effective = effectiveStats(machine)
@@ -62,6 +58,15 @@ export function MachineInspector() {
       <StatList stats={effective} />
       <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.stats')}</h3>
       <StatList stats={machine.baseStats} />
+      {machine.tile && (
+        <button
+          type="button"
+          onClick={() => startMoving(machine.id)}
+          className={`mt-3 border px-3 py-1 text-xs uppercase tracking-widest ${moving ? 'border-accent bg-accent/20 text-accent' : 'border-accent text-accent hover:bg-accent/20'}`}
+        >
+          {t('hud.move')}
+        </button>
+      )}
     </aside>
   )
 }

@@ -22,6 +22,12 @@ export interface Machine {
   tile: Tile | null
 }
 
+/** A pre-rolled Machine in the Shop Stock, with the price to buy it. */
+export interface Offer {
+  machine: Machine
+  price: number
+}
+
 export interface StorageEntry {
   amount: number
   tier: number
@@ -49,4 +55,9 @@ export interface GameState {
   machines: Machine[]
   modInventory: Record<string, number>
   market: Record<ResourceId, number>
+  shop: {
+    offers: Offer[]
+    /** Sim-clock time of the next timed Shop Refresh. */
+    nextRefresh: number
+  }
 }

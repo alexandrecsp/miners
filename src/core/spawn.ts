@@ -1,7 +1,7 @@
 import type { Draft } from 'immer'
 import { DEPOSIT_DEFS, DEPOSIT_SPAWN } from './defs'
 import type { DepositResource } from './defs'
-import { nextId } from './newGame'
+import { nextId } from './ids'
 import { isTileUnlocked } from './queries'
 import type { Rng } from './rng'
 import { sameTile } from './tile'
