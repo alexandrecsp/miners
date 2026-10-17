@@ -129,3 +129,67 @@ describe('Refining', () => {
     expect(Math.abs(coarse.storage.alloy.amount - fine.storage.alloy.amount) / fine.storage.alloy.amount).toBeLessThan(0.01)
   })
 })
+
+describe('Set Recipe', () => {
+  const setRecipe = (state: GameState, machineId: string, recipeId: string) =>
+    applyAction(state, { kind: 'setRecipe', machineId, recipeId: recipeId as 'oreToAlloy' })
+
+  function crystalScenario(opts: { ore?: number; crystal?: number } = {}): GameState {
+    const state = produce(scenario({ rate: 0.5, efficiency: 1, ore: opts.ore ?? 1000 }), (d) => {
+      d.storage.crystal.amount = opts.crystal ?? 1000
+      d.storage.ore.tier = 3
+      d.storage.crystal.tier = 3
+      d.storage.alloy.tier = 3
+    })
+    const set = setRecipe(state, 'm100', 'oreCrystalToAlloy')
+    if (!set.ok) throw new Error(set.reason)
+    return set.value
+  }
+
+  it('Ore plus Crystal uses 10 Ore and 5 Crystal and adds 10 Alloy over 10 s', () => {
+    const before = crystalScenario()
+    const next = advance(before, 10, 0.1)
+    expect(next.storage.ore.amount).toBeCloseTo(990, 6)
+    expect(next.storage.crystal.amount).toBeCloseTo(995, 6)
+    expect(next.storage.alloy.amount).toBeCloseTo(10, 6)
+  })
+
+  it('Ore plus Crystal with no Crystal reports Idle for inputs missing and uses no Ore', () => {
+    const next = advance(crystalScenario({ crystal: 0 }), 10, 1)
+    expect(next.storage.ore.amount).toBe(1000)
+    expect(machineStatus(next, 'm100')).toEqual({ kind: 'idle', reason: 'inputsMissing' })
+  })
+
+  it('two Refineries on different Recipes each follow their own', () => {
+    const state = produce(crystalScenario(), (d) => {
+      d.machines.push({ ...machine('m101', 'refinery', { rate: 0.5, efficiency: 1, durability: 1 }), tile: { x: 16, y: 15 } })
+    })
+    const next = advance(state, 10, 1)
+    // m100: 10 Ore + 5 Crystal -> 10 Alloy; m101: 20 Ore -> 5 Alloy
+    expect(next.storage.ore.amount).toBeCloseTo(1000 - 10 - 20, 6)
+    expect(next.storage.crystal.amount).toBeCloseTo(995, 6)
+    expect(next.storage.alloy.amount).toBeCloseTo(15, 6)
+  })
+
+  it('fails with a reason and changes nothing on a Drill', () => {
+    const state = produce(scenario(), (d) => {
+      d.machines.push({ ...machine('m101', 'drill', { rate: 1, efficiency: 1, durability: 1 }) })
+    })
+    expect(setRecipe(state, 'm101', 'oreCrystalToAlloy')).toEqual({ ok: false, reason: 'fail.notRefinery' })
+  })
+
+  it('fails with a reason on an unknown Recipe and a missing Machine', () => {
+    const state = scenario()
+    expect(setRecipe(state, 'm100', 'nonsense')).toEqual({ ok: false, reason: 'fail.recipeNotFound' })
+    expect(setRecipe(state, 'nope', 'oreToAlloy')).toEqual({ ok: false, reason: 'fail.machineNotFound' })
+  })
+
+  it('sets the Recipe of a Refinery in the Machine Inventory', () => {
+    const state = produce(scenario(), (d) => {
+      d.machines[0]!.tile = null
+    })
+    const next = setRecipe(state, 'm100', 'oreCrystalToAlloy')
+    if (!next.ok) throw new Error(next.reason)
+    expect(next.value.machines[0]!.recipeId).toBe('oreCrystalToAlloy')
+  })
+})

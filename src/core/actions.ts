@@ -1,7 +1,7 @@
 import { produce } from 'immer'
 import { SHOP, STARTING_CONDITION } from './defs'
-import type { ResourceId } from './defs'
-import { checkBuyOffer, checkMove, checkPlacement, checkSale, checkShopRefresh, saleOutcome } from './queries'
+import type { RecipeId, ResourceId } from './defs'
+import { checkBuyOffer, checkMove, checkPlacement, checkSale, checkSetRecipe, checkShopRefresh, saleOutcome } from './queries'
 import { stateRng } from './rng'
 import { nextId } from './ids'
 import { fillShop } from './shop'
@@ -17,6 +17,7 @@ export type PlayerAction =
   /** `machineId` is the Offer's id: the id of the rolled Machine it holds in the Shop Stock. */
   | { kind: 'buyOffer'; machineId: string }
   | { kind: 'refreshShop' }
+  | { kind: 'setRecipe'; machineId: string; recipeId: RecipeId }
 
 /** Apply a Player Action: the next Game State, or a failure reason with the state untouched. */
 export function applyAction(state: GameState, action: PlayerAction): Result<GameState> {
@@ -77,6 +78,15 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
         produce(state, (draft) => {
           draft.credits -= SHOP.refreshCost
           fillShop(draft, stateRng(draft))
+        }),
+      )
+    }
+    case 'setRecipe': {
+      const check = checkSetRecipe(state, action.machineId, action.recipeId)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.machines.find((m) => m.id === action.machineId)!.recipeId = action.recipeId
         }),
       )
     }

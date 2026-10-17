@@ -1,5 +1,5 @@
 import { isMiner, MACHINE_DEFS, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { MachineDefId, RecipeDef, ResourceId, StatName } from './defs'
+import type { MachineDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
 import { compareIds } from './ids'
 import { fail, ok } from './result'
 import type { Result } from './result'
@@ -241,4 +241,12 @@ export function offerPrice(defId: MachineDefId, quality: number): number {
   const raw = MACHINE_DEFS[defId].basePrice * (min + (max - min) * quality)
   // The tolerance keeps float noise (78.00000000000001) from rounding an exact price up by a Credit.
   return Math.ceil(raw - 1e-9)
+}
+
+/** Whether a Refinery (placed or in the Machine Inventory) may be set to a Recipe: the one check the Set Recipe action and the inspector share. */
+export function checkSetRecipe(state: Pick<GameState, 'machines'>, machineId: string, recipeId: RecipeId): Result<null> {
+  const machine = state.machines.find((m) => m.id === machineId)
+  if (!machine) return fail('fail.machineNotFound')
+  if (machine.defId !== 'refinery') return fail('fail.notRefinery')
+  return Object.hasOwn(RECIPE_DEFS, recipeId) ? ok(null) : fail('fail.recipeNotFound')
 }
