@@ -1,5 +1,5 @@
-import { MACHINE_DEFS, RESOURCE_DEFS, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { ResourceId, StatName } from './defs'
+import { MACHINE_DEFS, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
+import type { MachineDefId, ResourceId, StatName } from './defs'
 import { fail, ok } from './result'
 import type { Result } from './result'
 import { effectiveStat } from './stats'
@@ -128,4 +128,33 @@ export function checkSaleAmount(stored: number, amount: number): Result<null> {
 /** Whether `amount` of a Resource may be sold from Storage. */
 export function checkSale(state: Pick<GameState, 'storage'>, resource: ResourceId, amount: number): Result<null> {
   return checkSaleAmount(state.storage[resource].amount, amount)
+}
+
+/** Whether the Shop may be refreshed for a fee: the one check the Refresh Shop action and the Shop panel share. */
+export function checkShopRefresh(state: Pick<GameState, 'credits'>): Result<null> {
+  return state.credits >= SHOP.refreshCost ? ok(null) : fail('fail.notEnoughCredits')
+}
+
+/** Sim seconds until the next timed Shop Refresh. */
+export function shopCountdown(state: Pick<GameState, 'simClock' | 'shop'>): number {
+  return Math.max(0, state.shop.nextRefresh - state.simClock)
+}
+
+/** Roll quality: the mean of the Base Stats' positions within their Machine Def's ranges, 0 to 1. */
+export function rollQuality(machine: Pick<Machine, 'defId' | 'baseStats'>): number {
+  const def = MACHINE_DEFS[machine.defId]
+  let total = 0
+  for (const stat of STAT_NAMES) {
+    const { min, max } = def.stats[stat]
+    total += (machine.baseStats[stat] - min) / (max - min)
+  }
+  return total / STAT_NAMES.length
+}
+
+/** Offer price: base price x (0.7 + 0.6 x roll quality), rounded up to whole Credits. */
+export function offerPrice(defId: MachineDefId, quality: number): number {
+  const { min, max } = SHOP.price
+  const raw = MACHINE_DEFS[defId].basePrice * (min + (max - min) * quality)
+  // The tolerance keeps float noise (78.00000000000001) from rounding an exact price up by a Credit.
+  return Math.ceil(raw - 1e-9)
 }

@@ -21,6 +21,9 @@ const STRINGS = {
   'hud.place': 'Place',
   'hud.stats': 'Base Stats',
   'hud.close': 'Close',
+  'hud.shop': 'Shop',
+  'hud.shopRefreshIn': 'Next refresh in',
+  'hud.shopRefresh': 'Refresh',
   'stat.rate': 'Rate',
   'stat.efficiency': 'Efficiency',
   'stat.durability': 'Durability',
@@ -39,6 +42,7 @@ const STRINGS = {
   'fail.tileHasRock': 'A Rock blocks that Tile.',
   'fail.invalidAmount': 'Enter an amount above zero.',
   'fail.notEnoughResource': 'Storage does not hold that much.',
+  'fail.notEnoughCredits': 'Not enough Credits.',
   'fail.noDeposit': 'This Machine needs a Deposit on the Tile.',
 } as const
 

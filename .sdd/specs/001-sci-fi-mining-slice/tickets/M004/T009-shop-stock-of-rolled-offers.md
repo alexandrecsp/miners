@@ -3,7 +3,7 @@ id: T009
 title: Fill the Shop Stock with pre-rolled Offers
 milestone: M004
 blocked-by: [T004]
-status: todo
+status: done
 ---
 
 ## What to build

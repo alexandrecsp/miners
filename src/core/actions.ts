@@ -1,6 +1,9 @@
 import { produce } from 'immer'
+import { SHOP } from './defs'
 import type { ResourceId } from './defs'
-import { checkPlacement, checkSale, saleOutcome } from './queries'
+import { checkPlacement, checkSale, checkShopRefresh, saleOutcome } from './queries'
+import { stateRng } from './rng'
+import { fillShop } from './shop'
 import { ok } from './result'
 import type { Result } from './result'
 import type { GameState, Tile } from './types'
@@ -9,6 +12,7 @@ import type { GameState, Tile } from './types'
 export type PlayerAction =
   | { kind: 'place'; machineId: string; tile: Tile }
   | { kind: 'sell'; resource: ResourceId; amount: number }
+  | { kind: 'refreshShop' }
 
 /** Apply a Player Action: the next Game State, or a failure reason with the state untouched. */
 export function applyAction(state: GameState, action: PlayerAction): Result<GameState> {
@@ -32,6 +36,16 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
           draft.storage[resource].amount -= amount
           draft.credits += credits
           draft.market[resource] = price
+        }),
+      )
+    }
+    case 'refreshShop': {
+      const check = checkShopRefresh(state)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.credits -= SHOP.refreshCost
+          fillShop(draft, stateRng(draft))
         }),
       )
     }

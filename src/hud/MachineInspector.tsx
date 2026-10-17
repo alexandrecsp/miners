@@ -4,15 +4,9 @@ import { formatNumber } from '../core/format'
 import { effectiveStats, machineStatus } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
-import type { StringId } from '../core/strings'
 import { useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
-
-const STAT_LABEL: Record<(typeof STAT_NAMES)[number], StringId> = {
-  rate: 'stat.rate',
-  efficiency: 'stat.efficiency',
-  durability: 'stat.durability',
-}
+import { STAT_LABEL } from './statLabels'
 
 function StatList({ stats }: { stats: Record<StatName, number> }) {
   return (
