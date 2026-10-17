@@ -84,6 +84,7 @@ describe('Deposit spawn', () => {
     const state = produce(emptyGrid(), (d) => {
       d.grid.nextDepositSpawn = 1
       d.machines[0]!.defId = 'refinery'
+      d.machines[0]!.recipeId = 'oreToAlloy'
       d.machines[0]!.tile = { x: 10, y: 10 }
     })
     // Index 0 of the Empty Tiles would be (10,10) if Machines were ignored.

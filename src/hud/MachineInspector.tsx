@@ -1,7 +1,7 @@
 import { MACHINE_DEFS, STAT_NAMES } from '../core/defs'
 import type { StatName } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { effectiveStats, machineStatus } from '../core/queries'
+import { effectiveStats, machineStatus, recipeOf } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { t } from '../core/strings'
 import { useGameStore } from '../store/gameStore'
@@ -42,6 +42,7 @@ export function MachineInspector() {
   const status = useGameStore((s) => (selectedId ? statusText(machineStatus(s.game, selectedId)) : ''))
   if (!machine) return null
   const effective = effectiveStats(machine)
+  const recipe = recipeOf(machine)
   return (
     <aside className="absolute bottom-4 right-4 w-64 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
       <div className="flex items-center justify-between">
@@ -54,6 +55,11 @@ export function MachineInspector() {
         <span className="text-xs uppercase tracking-widest text-ink/60">{t('hud.status')}</span>{' '}
         {status}
       </p>
+      {recipe && (
+        <p className="mt-1 text-sm">
+          <span className="text-xs uppercase tracking-widest text-ink/60">{t('hud.recipe')}</span> {t(recipe.nameId)}
+        </p>
+      )}
       <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.effectiveStats')}</h3>
       <StatList stats={effective} />
       <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.stats')}</h3>

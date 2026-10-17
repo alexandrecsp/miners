@@ -1,5 +1,5 @@
 import type { Draft } from 'immer'
-import { MACHINE_DEFS, SHOP, STARTING_CONDITION, STAT_NAMES } from './defs'
+import { DEFAULT_RECIPE, isMiner, MACHINE_DEFS, SHOP, STARTING_CONDITION, STAT_NAMES } from './defs'
 import type { MachineDefId, StatName } from './defs'
 import { nextId } from './ids'
 import { offerPrice, rollQuality } from './queries'
@@ -16,6 +16,7 @@ export function buildMachine(id: string, defId: MachineDefId, baseStats: Record<
     lifetimeWear: 0,
     mods: Array.from({ length: MACHINE_DEFS[defId].modSlots }, () => null),
     tile: null,
+    recipeId: isMiner(defId) ? null : DEFAULT_RECIPE,
   }
 }
 

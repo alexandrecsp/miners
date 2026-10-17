@@ -3,7 +3,7 @@ id: T012
 title: Place a Refinery and refine Ore into Alloy
 milestone: M005
 blocked-by: [T008, T010]
-status: todo
+status: done
 ---
 
 ## What to build

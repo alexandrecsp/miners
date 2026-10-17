@@ -48,8 +48,12 @@ const STRINGS = {
   'fail.notEnoughResource': 'Storage does not hold that much.',
   'fail.notEnoughCredits': 'Not enough Credits.',
   'fail.offerNotFound': 'That Offer is no longer in the Shop.',
-  'fail.placementNotAvailable': 'This Machine cannot be placed yet.',
   'hud.buy': 'Buy',
+  'hud.recipe': 'Recipe',
+  'recipe.oreToAlloy': 'Ore to Alloy',
+  'recipe.oreCrystalToAlloy': 'Ore + Crystal to Alloy',
+  'idle.inputsMissing': 'Idle: inputs missing',
+  'fail.depositOnTile': 'This Machine needs an Empty Tile, without a Deposit.',
   'fail.noDeposit': 'This Machine needs a Deposit on the Tile.',
 } as const
 

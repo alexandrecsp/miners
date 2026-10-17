@@ -1,4 +1,4 @@
-import type { DepositResource, MachineDefId, ResourceId, StatName } from './defs'
+import type { DepositResource, MachineDefId, RecipeId, ResourceId, StatName } from './defs'
 
 export interface Tile {
   x: number
@@ -20,6 +20,8 @@ export interface Machine {
   lifetimeWear: number
   mods: (string | null)[]
   tile: Tile | null
+  /** A Refinery's Recipe; null for Machines that do not refine. */
+  recipeId: RecipeId | null
 }
 
 /** A pre-rolled Machine in the Shop Stock, with the price to buy it. */
