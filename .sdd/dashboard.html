@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDD dashboard</title>
+<!--
+  SDD dashboard: a read-only view of .sdd/specs. No server, no build step.
+  Open this file in a browser and pick the repository root (or .sdd/specs).
+  Chrome and Edge read the folder live; other browsers load a snapshot.
+  Copied into each repo by /sdd:setup-repository; edit the plugin's copy, not this one.
+-->
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'media',
+    theme: {
+      extend: {
+        colors: {
+          bg: 'rgb(var(--bg) / <alpha-value>)',
+          panel: 'rgb(var(--panel) / <alpha-value>)',
+          hover: 'rgb(var(--hover) / <alpha-value>)',
+          line: 'rgb(var(--line) / <alpha-value>)',
+          muted: 'rgb(var(--muted) / <alpha-value>)',
+          fg: 'rgb(var(--fg) / <alpha-value>)',
+          strong: 'rgb(var(--strong) / <alpha-value>)',
+        },
+        fontFamily: {
+          sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+          mono: ['ui-monospace', 'SFMono-Regular', 'Cascadia Mono', 'Consolas', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  :root { --bg: 255 255 255; --panel: 250 250 250; --hover: 244 244 245; --line: 228 228 231; --muted: 113 113 122; --fg: 39 39 42; --strong: 9 9 11; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: 9 9 11; --panel: 17 17 19; --hover: 28 28 31; --line: 39 39 42; --muted: 140 140 150; --fg: 212 212 216; --strong: 250 250 250; color-scheme: dark; }
+  }
+  *, *::before, *::after { border-radius: 0 !important; }
+  html, body { background: rgb(var(--bg)); color: rgb(var(--fg)); }
+  body { -webkit-font-smoothing: antialiased; }
+  ::selection { background: rgb(var(--strong)); color: rgb(var(--bg)); }
+
+  /* status glyphs: outline, half, solid, hatched */
+  .st { display: inline-block; width: 10px; height: 10px; border: 1.5px solid rgb(var(--strong)); flex: none; }
+  .st-todo { border-color: rgb(var(--muted)); }
+  .st-in-progress { background: linear-gradient(90deg, rgb(var(--strong)) 50%, transparent 50%); }
+  .st-done { background: rgb(var(--strong)); }
+  .st-failed { background: repeating-linear-gradient(45deg, rgb(var(--strong)) 0 1.5px, transparent 1.5px 4px); }
+  .seg-done { background: rgb(var(--strong)); }
+  .seg-in-progress { background: rgb(var(--muted)); }
+  .seg-failed { background: repeating-linear-gradient(45deg, rgb(var(--strong)) 0 2px, rgb(var(--line)) 2px 5px); }
+
+  .flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: rgb(var(--hover)); outline: 1px solid rgb(var(--strong)); } to { background: transparent; outline-color: transparent; } }
+
+  /* rendered markdown */
+  .md { font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+  .md > :first-child { margin-top: 0; }
+  .md h1, .md h2, .md h3, .md h4 { color: rgb(var(--strong)); font-weight: 600; line-height: 1.3; scroll-margin-top: 16px; }
+  .md h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+  .md h2 { font-size: 1.1rem; margin: 2.25rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgb(var(--line)); }
+  .md h3 { font-size: .95rem; margin: 1.75rem 0 .5rem; }
+  .md h4 { font-size: .875rem; margin: 1.25rem 0 .5rem; }
+  .md p, .md ul, .md ol, .md table, .md pre, .md blockquote { margin: .65rem 0; }
+  .md ul { list-style: square; padding-left: 1.25rem; }
+  .md ol { list-style: decimal; padding-left: 1.6rem; }
+  .md li { margin: .2rem 0; padding-left: .15rem; scroll-margin-top: 16px; }
+  .md li:has(> input[type=checkbox]) { list-style: none; margin-left: -1.25rem; }
+  .md input[type=checkbox] { accent-color: rgb(var(--strong)); margin-right: .45rem; transform: translateY(1px); }
+  .md a { color: rgb(var(--strong)); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgb(var(--muted)); }
+  .md strong { color: rgb(var(--strong)); }
+  .md code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .85em; background: rgb(var(--hover)); padding: .08rem .3rem; }
+  .md pre { background: rgb(var(--panel)); border: 1px solid rgb(var(--line)); padding: .75rem 1rem; overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  .md pre code { background: none; padding: 0; font-size: inherit; }
+  .md blockquote { border-left: 2px solid rgb(var(--strong)); padding-left: .9rem; color: rgb(var(--muted)); }
+  .md table { border-collapse: collapse; width: 100%; font-size: 13px; display: block; overflow-x: auto; }
+  .md th, .md td { border: 1px solid rgb(var(--line)); padding: .35rem .6rem; text-align: left; vertical-align: top; }
+  .md th { background: rgb(var(--panel)); font-weight: 600; color: rgb(var(--strong)); }
+  .md hr { border: 0; border-top: 1px solid rgb(var(--line)); margin: 1.5rem 0; }
+  .md .mermaid { border: 1px solid rgb(var(--line)); padding: 1rem; overflow-x: auto; margin: .75rem 0; text-align: center; }
+  .md .refs { display: flex; flex-wrap: wrap; gap: .25rem; margin: .4rem 0 0; }
+
+  /* dependency graph: same status language as the glyphs, drawn in SVG */
+  .graph text { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  .graph .gnode { cursor: pointer; transition: opacity .12s; }
+  .graph .gnode .box { fill: rgb(var(--bg)); stroke: rgb(var(--muted)); stroke-width: 1; }
+  .graph .gnode:hover .box { fill: rgb(var(--hover)); }
+  .graph .g-ready .box { stroke: rgb(var(--strong)); }
+  .graph .g-in-progress .box { stroke: rgb(var(--strong)); stroke-width: 2; }
+  .graph .g-failed .box { stroke: rgb(var(--strong)); stroke-width: 1.5; stroke-dasharray: 5 3; }
+  .graph .g-done .box { fill: rgb(var(--panel)); stroke: rgb(var(--line)); }
+  .graph .g-ghost { cursor: default; }
+  .graph .g-ghost .box { fill: transparent; stroke-dasharray: 3 3; }
+  .graph .gid { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; fill: rgb(var(--muted)); }
+  .graph .gtitle { font-size: 12px; fill: rgb(var(--strong)); }
+  .graph .g-done .gtitle, .graph .g-ghost .gtitle { fill: rgb(var(--muted)); }
+  .graph .gband { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; fill: rgb(var(--fg)); }
+  .graph .gsep { stroke: rgb(var(--line)); stroke-dasharray: 4 4; }
+  .graph .sg { fill: none; stroke: rgb(var(--strong)); stroke-width: 1.5; }
+  .graph .sg-todo, .graph .sg-ghost { stroke: rgb(var(--muted)); }
+  .graph .sg-done, .graph .sg-fill { fill: rgb(var(--strong)); }
+  .graph .sg-failed { fill: url(#g-hatch); }
+  .graph .gedge { fill: none; stroke-width: 1.25; transition: opacity .12s; }
+  .graph .e-pending { stroke: rgb(var(--strong)); }
+  .graph .e-done, .graph .e-ghost { stroke: rgb(var(--muted)); stroke-opacity: .5; }
+  .graph .e-ghost, .graph .e-back { stroke-dasharray: 4 3; }
+  .graph .g-faded { opacity: .25; }
+  .graph.g-hover .gnode:not(.g-on), .graph.g-hover .gedge:not(.g-on) { opacity: .12; }
+</style>
+<style type="text/tailwindcss">
+  @layer components {
+    .btn { @apply inline-flex items-center gap-1.5 h-7 px-2.5 border border-line bg-bg text-xs text-fg hover:bg-hover hover:border-muted disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap; }
+    .btn-solid { @apply bg-strong text-bg border-strong hover:bg-fg hover:border-fg; }
+    .chip { @apply inline-flex items-center gap-1 border border-line px-1.5 h-5 text-[11px] font-mono text-muted whitespace-nowrap; }
+    .chip-on { @apply bg-strong text-bg border-strong; }
+    .label { @apply text-[10px] font-mono uppercase tracking-[.12em] text-muted; }
+    .tab { @apply h-9 px-3 -mb-px border-b-2 border-transparent text-sm text-muted hover:text-strong whitespace-nowrap; }
+    .tab-on { @apply border-strong text-strong; }
+    .row { @apply flex items-center gap-3 px-3 py-2 border-b border-line last:border-b-0 hover:bg-hover cursor-pointer; }
+    .link { @apply underline underline-offset-2 decoration-muted hover:decoration-strong; }
+  }
+</style>
+</head>
+<body class="font-sans text-sm">
+
+<header class="h-12 border-b border-line flex items-center gap-2 px-4 sticky top-0 bg-bg z-20">
+  <a href="#/" class="font-mono font-semibold text-strong tracking-tight">SDD</a>
+  <span id="repoSep" class="text-line hidden">/</span>
+  <span id="repoName" class="font-mono text-muted truncate min-w-0"></span>
+  <div class="ml-auto flex items-center gap-2">
+    <span id="stamp" class="hidden sm:inline text-[11px] font-mono text-muted"></span>
+    <button id="liveBtn" class="btn hidden" title="Re-read the folder every few seconds"></button>
+    <button id="reloadBtn" class="btn hidden" title="Read the folder again">Reload</button>
+    <button id="openBtn" class="btn">Open folder</button>
+  </div>
+</header>
+
+<div class="flex" style="height: calc(100vh - 3rem)">
+  <nav id="sidebar" class="w-60 shrink-0 border-r border-line overflow-y-auto hidden md:block"></nav>
+  <main id="main" class="flex-1 min-w-0 overflow-y-auto"></main>
+</div>
+
+<div id="scrim" class="fixed inset-0 top-12 bg-strong/10 hidden z-20"></div>
+<aside id="drawer" class="fixed top-12 right-0 bottom-0 w-full max-w-2xl bg-bg border-l border-line overflow-y-auto z-30 translate-x-full transition-transform duration-150"></aside>
+
+<input id="dirInput" type="file" webkitdirectory multiple hidden>
+
+<script>
+'use strict';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const join = (...parts) => parts.filter(Boolean).join('/');
+const uniq = xs => [...new Set(xs)];
+const norm = v => String(v ?? '').trim().toUpperCase();
+const asArray = v => Array.isArray(v) ? v : (v ? [v] : []);
+const byNumericId = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
+const slugify = s => String(s).toLowerCase().replace(/[`*_]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const plainHeading = s => s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[`*_]/g, '').trim();
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sdd-dashboard:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('sdd-dashboard:' + k, JSON.stringify(v)); } catch {} },
+};
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h; }
+
+// Directory handles survive reloads in IndexedDB, so a revisit needs one click.
+const idb = {
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('sdd-dashboard', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async get(k) {
+    try {
+      const db = await this.open();
+      return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); });
+    } catch { return undefined; }
+  },
+  async set(k, v) { try { const db = await this.open(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch {} },
+};
+
+// Every file:// page shares one IndexedDB, so the handle is keyed by where this copy sits:
+// <repo>/.sdd/dashboard.html remembers <repo>, and a second repo's copy does not reopen the first.
+const REPO_PATH = decodeURIComponent(location.pathname).replace(/\/\.sdd\/[^/]*$/, '');
+const ROOT_KEY = 'root:' + REPO_PATH;
+
+// ─── Sources: a live directory handle, or a snapshot from <input webkitdirectory> ──
+
+class HandleSource {
+  constructor(root) { this.root = root; this.name = root.name; this.live = true; this.dirs = new Map(); }
+  // One load resolves each directory once; the next load starts afresh, so a deleted folder never lingers.
+  reset() { this.dirs = new Map(); }
+  dir(path) {
+    const key = path.split('/').filter(Boolean).join('/');
+    if (!this.dirs.has(key)) {
+      const cut = key.lastIndexOf('/');
+      this.dirs.set(key, !key ? Promise.resolve(this.root)
+        : this.dir(cut < 0 ? '' : key.slice(0, cut)).then(p => p ? p.getDirectoryHandle(key.slice(cut + 1)) : null).catch(() => null));
+    }
+    return this.dirs.get(key);
+  }
+  async list(path) {
+    const d = await this.dir(path);
+    if (!d) return [];
+    const out = [];
+    for await (const [name, h] of d.entries()) out.push({ name, dir: h.kind === 'directory' });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async read(path) {
+    const parts = path.split('/');
+    const file = parts.pop();
+    const d = await this.dir(parts.join('/'));
+    if (!d) return null;
+    try { return await (await (await d.getFileHandle(file)).getFile()).text(); } catch { return null; }
+  }
+}
+
+// Keeps only what the dashboard reads, so picking a repo root with node_modules stays cheap.
+const KEEP = /(^|\/)\.sdd\/specs\/|^[^/]+\/(spec\.md$|tickets\/)/;
+
+class FileListSource {
+  constructor(files) {
+    this.files = new Map();
+    this.dirs = new Map();
+    this.live = false;
+    this.reset = () => {};
+    for (const f of files) {
+      const parts = (f.webkitRelativePath || f.name).split('/');
+      this.name = parts.shift();
+      const rel = parts.join('/');
+      if (!KEEP.test(rel)) continue;
+      this.files.set(rel, f);
+      for (let i = 0; i < parts.length; i++) {
+        const parent = parts.slice(0, i).join('/');
+        if (!this.dirs.has(parent)) this.dirs.set(parent, new Map());
+        this.dirs.get(parent).set(parts[i], i < parts.length - 1);
+      }
+    }
+  }
+  async list(path) {
+    const m = this.dirs.get(path);
+    return m ? [...m].map(([name, dir]) => ({ name, dir })).sort((a, b) => a.name.localeCompare(b.name)) : [];
+  }
+  async read(path) { const f = this.files.get(path); return f ? await f.text() : null; }
+}
+
+// ─── Parsing the SDD files (skills/write-spec, skills/write-tickets) ────────
+
+function unquote(s) { return s.replace(/^(["'])(.*)\1$/, '$2'); }
+function stripComment(v) {
+  let q = null;
+  for (let i = 0; i < v.length; i++) {
+    const c = v[i];
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "'") q = c;
+    else if (c === '#' && (i === 0 || /\s/.test(v[i - 1]))) return v.slice(0, i).trim();
+  }
+  return v.trim();
+}
+function parseValue(raw) {
+  const v = stripComment(raw);
+  if (v.startsWith('[')) {
+    const inner = v.replace(/^\[|\]$/g, '').trim();
+    return inner ? inner.split(',').map(s => unquote(s.trim())).filter(Boolean) : [];
+  }
+  return unquote(v);
+}
+// Flat YAML frontmatter: scalars, inline lists, and block lists of "- item" lines.
+function parseFrontmatter(text) {
+  text = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const m = text.match(/^---\n([\s\S]*?)\n---[ \t]*(\n|$)/);
+  if (!m) return { fm: {}, body: text };
+  const fm = {};
+  let last = null;
+  for (const line of m[1].split('\n')) {
+    const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (kv) { last = kv[1]; fm[last] = parseValue(kv[2]); continue; }
+    const item = line.match(/^\s+-\s+(.*)$/);
+    if (item && last) fm[last] = [...asArray(fm[last]), parseValue(item[1])];
+  }
+  return { fm, body: text.slice(m[0].length) };
+}
+
+// Splits markdown into sections at one heading level, ignoring fenced code.
+function sections(body, level = 2) {
+  const re = new RegExp(`^${'#'.repeat(level)} (.+)$`);
+  const out = [];
+  let cur = { title: '', lines: [] };
+  let fence = false;
+  for (const line of body.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    const m = !fence && line.match(re);
+    if (m) { out.push(cur); cur = { title: plainHeading(m[1]), lines: [] }; }
+    else cur.lines.push(line);
+  }
+  out.push(cur);
+  return out.map(s => ({ title: s.title, text: s.lines.join('\n').trim() }));
+}
+const section = (secs, name) => secs.find(s => s.title.toLowerCase() === name.toLowerCase())?.text ?? '';
+
+// Heading ids, in document order, exactly as renderMarkdown assigns them.
+function headingIds(body) {
+  const out = [];
+  const seen = new Map();
+  let fence = false;
+  for (const line of body.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) { fence = !fence; continue; }
+    const m = !fence && line.match(/^(#{2,4}) (.+)$/);
+    if (!m) continue;
+    const text = plainHeading(m[2]);
+    out.push({ level: m[1].length, text, id: uniqueId(seen, 'sec-' + slugify(text)) });
+  }
+  return out;
+}
+function uniqueId(seen, id) { const n = seen.get(id) || 0; seen.set(id, n + 1); return n ? `${id}-${n}` : id; }
+
+// "### M001: Name" under "## Milestones".
+const MILESTONE_HEADING = /^(M\d+)\s*[:.\-–—]?\s*(.*)$/i;
+
+function parseSpec(text) {
+  const { fm, body } = parseFrontmatter(text);
+  const title = (body.match(/^# (.+)$/m)?.[1] || '').trim();
+  const secs = sections(body);
+  const milestones = sections(section(secs, 'Milestones'), 3).filter(s => s.title).map(s => {
+    const h = s.title.match(MILESTONE_HEADING);
+    return { id: h ? norm(h[1]) : s.title, name: h ? h[2].trim() : '', text: s.text };
+  });
+  return { fm, title, body, milestones, headings: headingIds(body) };
+}
+
+const STATUSES = ['in-progress', 'failed', 'todo', 'done'];
+const STATUS_LABEL = { 'todo': 'todo', 'in-progress': 'in progress', 'done': 'done', 'failed': 'failed' };
+const normStatus = s => { const v = String(s || 'todo').toLowerCase().replace(/[\s_]+/g, '-'); return STATUS_LABEL[v] ? v : 'todo'; };
+
+// file is relative to the spec folder, e.g. tickets/M001/T001-add-order-schema.md.
+function parseTicket(file, text) {
+  const { fm, body } = parseFrontmatter(text);
+  const name = file.split('/').pop();
+  const folder = file.split('/').slice(-2, -1)[0];
+  const ac = section(sections(body), 'Acceptance criteria');
+  return {
+    file,
+    id: norm(fm.id || name.match(/^(T\d+)/i)?.[1] || name.replace(/\.md$/, '')),
+    title: fm.title || name.replace(/\.md$/, '').replace(/^T\d+-/i, '').replace(/-/g, ' '),
+    status: normStatus(fm.status),
+    milestone: norm(fm.milestone || (MILESTONE_HEADING.test(folder || '') ? folder : '')) || null,
+    blockedBy: asArray(fm['blocked-by']).map(norm).filter(Boolean),
+    fm, body,
+    ac: { total: (ac.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length, checked: (ac.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length },
+  };
+}
+
+// ─── Model ──────────────────────────────────────────────────────────────────
+
+const MS_LABEL = { 'not-started': 'not started', 'building': 'building', 'failed': 'failed', 'done': 'done' };
+
+function countBy(tickets) {
+  const c = { total: tickets.length, 'todo': 0, 'in-progress': 0, 'done': 0, 'failed': 0 };
+  for (const t of tickets) c[t.status]++;
+  return c;
+}
+
+function milestoneState(c) {
+  if (c.failed) return 'failed';
+  if (c.total && c.done === c.total) return 'done';
+  if (c.done || c['in-progress']) return 'building';
+  return 'not-started';
+}
+
+function featureStage(spec, c) {
+  if (!c.total) return spec ? 'no tickets' : 'empty';
+  if (c.failed) return 'failed';
+  if (c.done === c.total) return 'done';
+  if (c.done || c['in-progress']) return 'building';
+  return 'ready to build';
+}
+
+function buildFeature({ slug, basePath, spec, tickets }) {
+  tickets.sort(byNumericId);
+  const ms = spec ? spec.milestones.map(m => ({ ...m })) : [];
+  const byMs = new Map(ms.map(m => [m.id, m]));
+  for (const m of ms) m.tickets = [];
+  const unassigned = [];
+  for (const t of tickets) {
+    let m = byMs.get(t.milestone || (ms.length === 1 ? ms[0].id : ''));
+    // A ticket naming a milestone the spec lacks still gets its own lane.
+    if (!m && t.milestone) { m = { id: t.milestone, name: '', text: '', tickets: [], undeclared: true }; ms.push(m); byMs.set(m.id, m); }
+    (m ? m.tickets : unassigned).push(t);
+    t.ms = m || null;
+  }
+  ms.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  if (unassigned.length) ms.push({ id: '··', name: 'no milestone', text: '', tickets: unassigned, unassigned: true });
+
+  const byId = new Map(tickets.map(t => [t.id, t]));
+  for (const t of tickets) t.blocks = [];
+  for (const t of tickets) for (const b of t.blockedBy) byId.get(b)?.blocks.push(t.id);
+  for (const t of tickets) {
+    t.waitingOn = t.blockedBy.filter(b => byId.get(b)?.status !== 'done');
+    t.ready = t.status === 'todo' && !t.waitingOn.length;
+  }
+  for (const m of ms) { m.counts = countBy(m.tickets); m.state = milestoneState(m.counts); }
+  const counts = countBy(tickets);
+  const next = tickets.find(t => t.status === 'in-progress') || tickets.find(t => t.status === 'failed') || tickets.find(t => t.ready) || null;
+  return { slug, basePath, spec, tickets, byId, milestones: ms, counts, stage: featureStage(spec, counts), next };
+}
+
+async function loadRepo(src) {
+  src.reset();
+  // Reads run in parallel, so the change signature is keyed by path, never by arrival order.
+  const seen = new Map();
+  const read = async p => { const t = await src.read(p); seen.set(p, t ?? ''); return t; };
+  const list = p => src.list(p);
+
+  let specsPath = null;
+  if ((await list('.sdd/specs')).some(e => e.dir)) specsPath = '.sdd/specs';
+  else {
+    for (const e of await list('')) if (e.dir && !e.name.startsWith('.') && (await src.read(`${e.name}/spec.md`)) !== null) { specsPath = ''; break; }
+  }
+  if (specsPath === null) return { name: src.name, error: 'no-specs', features: [], sig: 0 };
+
+  // Tickets sit in tickets/<milestone>/; a flat tickets/ folder reads too.
+  async function ticketFiles(basePath) {
+    const out = [];
+    for (const e of await list(`${basePath}/tickets`)) {
+      if (!e.dir) { if (e.name.endsWith('.md')) out.push(`tickets/${e.name}`); continue; }
+      for (const f of await list(`${basePath}/tickets/${e.name}`)) if (!f.dir && f.name.endsWith('.md')) out.push(`tickets/${e.name}/${f.name}`);
+    }
+    return out;
+  }
+
+  async function loadFeature(slug) {
+    const basePath = join(specsPath, slug);
+    const [specText, files] = await Promise.all([read(`${basePath}/spec.md`), ticketFiles(basePath)]);
+    const texts = await Promise.all(files.map(f => read(`${basePath}/${f}`)));
+    const tickets = files.flatMap((f, i) => texts[i] !== null ? [parseTicket(f, texts[i])] : []);
+    if (specText === null && !tickets.length) return null;
+    return buildFeature({ slug, basePath, tickets, spec: specText !== null ? parseSpec(specText) : null });
+  }
+
+  const slugs = (await list(specsPath)).filter(e => e.dir && !e.name.startsWith('.')).map(e => e.name);
+  const features = (await Promise.all(slugs.map(loadFeature))).filter(Boolean);
+  const sig = hash([...seen.keys()].sort().map(k => k + '\u0000' + seen.get(k)).join('\u0000'));
+  return { name: specsPath ? src.name : `${src.name} (specs only)`, features, sig };
+}
+
+// ─── State ──────────────────────────────────────────────────────────────────
+
+const state = {
+  src: null,
+  pending: null,          // a remembered handle that needs permission again
+  repo: null,
+  loading: false,
+  live: store.get('live', true),
+  view: store.get('view', 'board'),
+  layout: store.get('layout', 'milestones'),
+  status: 'all',
+  q: '',
+  loadedAt: null,
+  lastRouteKey: null,
+};
+
+function route() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
+  if (parts[0] !== 'f' || !parts[1]) return { page: 'overview' };
+  return { page: 'feature', slug: parts[1], tab: parts[2] || 'tickets', extra: parts[3] || null };
+}
+const href = (slug, tab, extra) => '#/' + ['f', slug, tab, extra].filter(Boolean).map(encodeURIComponent).join('/');
+const feature = slug => state.repo?.features.find(f => f.slug === slug) || null;
+
+// ─── Markdown ───────────────────────────────────────────────────────────────
+
+function renderMarkdown(md) {
+  if (!window.marked) return `<pre>${esc(md)}</pre>`;
+  const html = marked.parse(md, { gfm: true });
+  return window.DOMPurify ? DOMPurify.sanitize(html) : html;
+}
+
+// Gives h2-h4 the ids headingIds() computed, turns mermaid fences into diagrams.
+function enhanceMarkdown(root) {
+  const seen = new Map();
+  for (const h of root.querySelectorAll('h2, h3, h4')) h.id = uniqueId(seen, 'sec-' + slugify(h.textContent.trim()));
+  const blocks = root.querySelectorAll('pre > code.language-mermaid');
+  if (blocks.length) {
+    for (const code of blocks) {
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = code.textContent;
+      code.parentElement.replaceWith(div);
+    }
+    renderMermaid(root);
+  }
+}
+
+let mermaidLib = null;
+async function renderMermaid(root) {
+  try {
+    if (!mermaidLib) {
+      mermaidLib = (await import('https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs')).default;
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaidLib.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: 'ui-sans-serif, system-ui, sans-serif', securityLevel: 'strict' });
+    }
+    await mermaidLib.run({ nodes: [...root.querySelectorAll('.mermaid:not([data-processed])')] });
+  } catch (err) {
+    console.warn('[sdd] mermaid', err);
+  }
+}
+
+// ─── Small UI pieces ────────────────────────────────────────────────────────
+
+const glyph = s => `<span class="st st-${esc(s)}" title="${esc(STATUS_LABEL[s] || s)}"></span>`;
+const msGlyph = state => glyph({ 'not-started': 'todo', 'building': 'in-progress' }[state] || state);
+
+function bar(c, h = 'h-1') {
+  if (!c.total) return `<div class="${h} w-full bg-line"></div>`;
+  return `<div class="flex ${h} w-full bg-line">${['done', 'in-progress', 'failed'].map(s => c[s] ? `<div class="seg-${s}" style="width:${(c[s] / c.total) * 100}%"></div>` : '').join('')}</div>`;
+}
+
+function msBadge(state) {
+  return `<span class="chip ${state === 'done' ? 'chip-on' : ''} ${state === 'failed' ? 'border-strong text-strong' : ''}">${esc(MS_LABEL[state] || state)}</span>`;
+}
+
+function stageBadge(stage) {
+  return `<span class="chip ${stage === 'done' ? 'chip-on' : ''} ${stage === 'failed' ? 'border-strong text-strong' : ''}">${esc(stage)}</span>`;
+}
+
+const msTitle = m => `${m.id}${m.name ? ' ' + m.name : ''}`;
+
+function ticketRef(f, id) {
+  const t = f.byId.get(id);
+  return `<a href="${href(f.slug, 'tickets', id)}" class="inline-flex items-center gap-1 font-mono text-xs hover:underline" title="${esc(t?.title || 'unknown ticket')}">${t ? glyph(t.status) : ''}${esc(id)}</a>`;
+}
+
+function empty(msg) { return `<div class="border border-dashed border-line px-4 py-8 text-center text-muted text-sm">${msg}</div>`; }
+
+// ─── Header and sidebar ─────────────────────────────────────────────────────
+
+function renderHeader() {
+  const repo = state.repo;
+  $('#repoName').textContent = repo ? repo.name : '';
+  $('#repoSep').classList.toggle('hidden', !repo);
+  const live = !!state.src?.live;
+  $('#reloadBtn').classList.toggle('hidden', !state.src);
+  $('#liveBtn').classList.toggle('hidden', !live);
+  $('#liveBtn').innerHTML = `<span class="st ${state.live ? 'st-done' : 'st-todo'}" style="width:7px;height:7px"></span>Live`;
+  $('#openBtn').textContent = state.src ? 'Change folder' : 'Open folder';
+  const t = state.loadedAt;
+  $('#stamp').textContent = t ? (state.src.live ? (state.live ? 'live · ' : 'read ') : 'snapshot ') + t.toLocaleTimeString() : '';
+}
+
+function renderSidebar() {
+  const nav = $('#sidebar');
+  const repo = state.repo;
+  if (!repo || !repo.features.length) { nav.innerHTML = ''; nav.classList.add('md:hidden'); return; }
+  nav.classList.remove('md:hidden');
+  const r = route();
+  nav.innerHTML = `
+    <a href="#/" class="flex items-center justify-between px-4 h-10 border-b border-line text-xs ${r.page === 'overview' ? 'bg-hover text-strong' : 'text-muted hover:text-strong'}">
+      <span class="label ${r.page === 'overview' ? 'text-strong' : ''}">Overview</span>
+      <span class="font-mono">${repo.features.length}</span>
+    </a>
+    <div class="py-1">
+      ${repo.features.map(f => `
+        <a href="${href(f.slug)}" class="block px-4 py-2.5 border-l-2 ${r.slug === f.slug ? 'border-strong bg-hover' : 'border-transparent hover:bg-hover'}">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-mono text-xs truncate ${r.slug === f.slug ? 'text-strong' : ''}">${esc(f.slug)}</span>
+            <span class="font-mono text-[11px] text-muted shrink-0">${f.counts.done}/${f.counts.total}</span>
+          </div>
+          <div class="mt-1.5">${bar(f.counts, 'h-0.5')}</div>
+          <div class="mt-1.5 text-[11px] text-muted">${esc(f.stage)}${f.counts['in-progress'] ? ` · ${f.counts['in-progress']} active` : ''}</div>
+        </a>`).join('')}
+    </div>`;
+}
+
+// ─── Pages ──────────────────────────────────────────────────────────────────
+
+function renderWelcome() {
+  const pending = state.pending;
+  const picker = 'showDirectoryPicker' in window;
+  return `
+    <div class="max-w-xl mx-auto px-4 py-20">
+      <div class="label mb-3">SDD · dashboard</div>
+      <h1 class="text-2xl font-semibold text-strong tracking-tight">Every spec, milestone and ticket in one place.</h1>
+      <p class="mt-3 text-muted leading-relaxed">Pick the repository root, the folder holding <code class="font-mono text-fg">.sdd</code>. The dashboard only reads each spec's <code class="font-mono text-fg">spec.md</code> and <code class="font-mono text-fg">tickets/</code>.</p>
+      ${state.repo?.error === 'no-specs' ? `<p class="mt-4 border border-strong px-3 py-2 text-xs">No <code class="font-mono">.sdd/specs</code> in <b>${esc(state.repo.name)}</b>. Pick the repository root, or <code class="font-mono">.sdd/specs</code> itself.</p>` : ''}
+      <div class="mt-8 flex flex-wrap gap-2">
+        ${pending ? `<button data-act="reconnect" class="btn btn-solid h-9 px-4 text-sm">Reopen ${esc(pending.name)}</button>` : ''}
+        <button data-act="open" class="btn ${pending ? '' : 'btn-solid'} h-9 px-4 text-sm">Open repository folder</button>
+      </div>
+      ${pending ? `<p class="mt-4 text-xs text-muted leading-relaxed">Click anywhere to reopen <b class="text-fg">${esc(pending.name)}</b>. When the browser asks, <i>Allow on every visit</i> opens it with no click next time.</p>` : ''}
+      <p class="mt-6 text-xs text-muted leading-relaxed">${picker
+        ? 'This browser reads the folder live: with Live on, the views follow a running <code class="font-mono">/sdd:build</code> as it sets ticket statuses.'
+        : 'This browser can only load a snapshot. Use Chrome or Edge to follow a build live; here, press Reload after a change and pick the folder again.'}</p>
+    </div>`;
+}
+
+function renderOverview() {
+  const fs = state.repo.features;
+  if (!fs.length) return `<div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">${empty('No spec under <code class="font-mono">.sdd/specs</code> yet. Start one with <code class="font-mono">/sdd:brainstorm</code>.')}</div>`;
+  const all = fs.flatMap(f => f.tickets);
+  const c = countBy(all);
+  const active = fs.flatMap(f => f.tickets.filter(t => t.status === 'in-progress' || t.status === 'failed').map(t => ({ f, t })));
+  const stat = (label, n) => `<div class="border border-line px-4 py-3 first:col-span-2 sm:first:col-span-1"><div class="label">${label}</div><div class="mt-1 text-2xl font-semibold text-strong font-mono">${n}</div></div>`;
+  return `
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div class="label">Overview</div>
+      <h1 class="mt-1 text-xl font-semibold text-strong tracking-tight">${esc(state.repo.name)}</h1>
+      <div class="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-px bg-line border border-line [&>*]:border-0 [&>*]:bg-bg">
+        ${stat('Specs', fs.length)}${stat('Tickets', c.total)}${stat('Done', c.done)}${stat('In progress', c['in-progress'])}${stat('Failed', c.failed)}
+      </div>
+      <div class="mt-2">${bar(c, 'h-1')}</div>
+
+      ${active.length ? `
+      <h2 class="label mt-10 mb-2">Now</h2>
+      <div class="border border-line">
+        ${active.map(({ f, t }) => `
+          <a href="${href(f.slug, 'tickets', t.id)}" class="row">
+            ${glyph(t.status)}
+            <span class="font-mono text-xs text-muted w-40 truncate">${esc(f.slug)}</span>
+            <span class="font-mono text-xs">${esc(t.id)}</span>
+            <span class="truncate flex-1 text-strong">${esc(t.title)}</span>
+            <span class="chip">${esc(STATUS_LABEL[t.status])}</span>
+          </a>`).join('')}
+      </div>` : ''}
+
+      <h2 class="label mt-10 mb-2">Specs</h2>
+      <div class="border border-line overflow-x-auto">
+        <table class="w-full text-sm min-w-[640px]">
+          <thead><tr class="border-b border-line text-left">
+            <th class="label font-normal px-3 py-2">Spec</th>
+            <th class="label font-normal px-3 py-2">Stage</th>
+            <th class="label font-normal px-3 py-2">Milestones</th>
+            <th class="label font-normal px-3 py-2 w-48">Tickets</th>
+            <th class="label font-normal px-3 py-2">Next</th>
+          </tr></thead>
+          <tbody>
+            ${fs.map(f => {
+              const real = f.milestones.filter(m => !m.unassigned);
+              return `
+              <tr class="border-b border-line last:border-b-0 hover:bg-hover cursor-pointer" data-go="${href(f.slug)}">
+                <td class="px-3 py-3 align-top">
+                  <div class="font-mono text-xs text-strong">${esc(f.slug)}</div>
+                  <div class="text-xs text-muted mt-0.5 truncate max-w-[16rem]">${esc(f.spec?.title || '')}</div>
+                </td>
+                <td class="px-3 py-3 align-top">${stageBadge(f.stage)}</td>
+                <td class="px-3 py-3 align-top">
+                  <div class="flex gap-1">${real.map(m => `<span title="${esc(msTitle(m))}: ${esc(MS_LABEL[m.state])}">${msGlyph(m.state)}</span>`).join('')}</div>
+                  <div class="text-[11px] text-muted mt-1 font-mono">${real.filter(m => m.state === 'done').length}/${real.length} done</div>
+                </td>
+                <td class="px-3 py-3 align-top">
+                  ${bar(f.counts, 'h-1')}
+                  <div class="text-[11px] text-muted mt-1 font-mono">${f.counts.done}/${f.counts.total} done${f.counts['in-progress'] ? ` · ${f.counts['in-progress']} active` : ''}${f.counts.failed ? ` · ${f.counts.failed} failed` : ''}</div>
+                </td>
+                <td class="px-3 py-3 align-top text-xs">${f.next ? `<span class="inline-flex items-center gap-1.5">${glyph(f.next.status)}<span class="font-mono">${esc(f.next.id)}</span> <span class="truncate max-w-[14rem] inline-block align-bottom">${esc(f.next.title)}</span></span>` : '<span class="text-muted">—</span>'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function featureHeader(f, tab) {
+  const s = f.spec?.fm || {};
+  const c = f.counts;
+  const tabs = [
+    ['tickets', `Tickets <span class="font-mono text-[11px] text-muted ml-1">${c.total}</span>`],
+    ['spec', 'Spec'],
+  ];
+  const stat = (label, n, st) => `<div class="px-4 py-3 bg-bg first:col-span-2 sm:first:col-span-1"><div class="label flex items-center gap-1.5">${st ? glyph(st) : ''}${label}</div><div class="mt-1 text-xl font-semibold font-mono text-strong">${n}</div></div>`;
+  const base = s['base-commit'];
+  return `
+    <div class="px-4 sm:px-6 pt-6">
+      <div class="text-xs text-muted"><a href="#/" class="hover:text-strong">Specs</a> <span class="text-line mx-1">/</span> <span class="font-mono">${esc(f.slug)}</span></div>
+      <h1 class="mt-2 text-xl font-semibold text-strong tracking-tight">${esc(f.spec?.title || f.slug)}</h1>
+      <div class="mt-3 flex flex-wrap items-center gap-1.5">
+        ${stageBadge(f.stage)}
+        ${s['spec-id'] ? `<span class="chip">${esc(s['spec-id'])}</span>` : ''}
+        ${base ? `<span class="chip" title="${esc(base)}">base ${esc(String(base).slice(0, 10))}</span>` : ''}
+        <span class="chip" title="Build branch">⎇ spec/${esc(f.slug)}</span>
+        <span class="chip" title="${esc(f.basePath)}">${esc(f.basePath)}</span>
+      </div>
+      ${c.total ? `
+      <div class="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-px bg-line border border-line">
+        ${stat('Total', c.total)}${stat('Done', c.done, 'done')}${stat('In progress', c['in-progress'], 'in-progress')}${stat('Todo', c.todo, 'todo')}${stat('Failed', c.failed, 'failed')}
+      </div>
+      <div class="mt-2">${bar(c, 'h-1')}</div>` : ''}
+      <div class="mt-6 flex gap-1 border-b border-line overflow-x-auto overflow-y-hidden">
+        ${tabs.map(([k, label]) => `<a href="${href(f.slug, k)}" class="tab ${tab === k ? 'tab-on' : ''}">${label}</a>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderFeature(r) {
+  const f = feature(r.slug);
+  if (!f) return `<div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">${empty(`No spec <code class="font-mono">${esc(r.slug)}</code>. <a class="link" href="#/">Back to the overview</a>.`)}</div>`;
+  const body = {
+    tickets: () => renderTicketsTab(f),
+    spec: () => renderDocTab(f),
+  }[r.tab] || (() => empty('Unknown tab.'));
+  return `<div class="max-w-6xl mx-auto pb-16">${featureHeader(f, r.tab)}<div class="px-4 sm:px-6 pt-5">${body()}</div></div>`;
+}
+
+function renderTicketsTab(f) {
+  if (!f.tickets.length) return empty(f.spec ? 'No tickets yet. <code class="font-mono">/sdd:spec</code> writes them with the spec.' : 'No spec and no tickets yet.');
+  const filters = ['all', ...STATUSES].map(s => {
+    const n = s === 'all' ? f.counts.total : f.counts[s];
+    return `<button data-status="${s}" class="btn ${state.status === s ? 'btn-solid' : ''}">${s === 'all' ? '' : glyph(s)}${esc(s === 'all' ? 'All' : STATUS_LABEL[s])}<span class="font-mono opacity-60">${n}</span></button>`;
+  }).join('');
+  return `
+    <div class="flex flex-wrap items-center gap-2 mb-5">
+      <input id="search" type="search" value="${esc(state.q)}" placeholder="Filter by id or title" class="h-7 w-full sm:w-64 border border-line bg-bg px-2.5 text-xs outline-none focus:border-strong placeholder:text-muted">
+      <div class="flex flex-wrap gap-1">${filters}</div>
+      <div class="sm:ml-auto flex">
+        <button data-view="board" class="btn ${state.view === 'board' ? 'btn-solid' : ''}">Kanban</button>
+        <button data-view="list" class="btn -ml-px ${state.view === 'list' ? 'btn-solid' : ''}">List</button>
+        <button data-view="graph" class="btn -ml-px ${state.view === 'graph' ? 'btn-solid' : ''}">Graph</button>
+      </div>
+    </div>
+    <div id="ticketArea">${renderTicketArea(f)}</div>`;
+}
+
+function matches(t) {
+  if (state.status !== 'all' && t.status !== state.status) return false;
+  const q = state.q.trim().toLowerCase();
+  if (!q) return true;
+  return [t.id, t.title, t.file].some(v => String(v).toLowerCase().includes(q));
+}
+
+function renderTicketArea(f) {
+  return ({ board: renderBoard, graph: renderGraph }[state.view] || renderList)(f);
+}
+
+// Developers rarely tick the boxes, so a count reads better than 0/N until one is ticked.
+const acText = t => t.ac.checked ? `${t.ac.checked}/${t.ac.total}` : `${t.ac.total}`;
+
+function ticketRow(f, t) {
+  const ac = t.ac.total ? `<span class="font-mono text-[11px] text-muted" title="Acceptance criteria">${acText(t)} AC</span>` : '';
+  const wait = t.status === 'todo' && t.waitingOn.length
+    ? `<span class="text-[11px] text-muted">waits ${t.waitingOn.map(esc).join(', ')}</span>`
+    : t.ready ? `<span class="text-[11px] text-strong">ready</span>` : '';
+  return `
+    <div class="row" data-go="${href(f.slug, 'tickets', t.id)}">
+      ${glyph(t.status)}
+      <span class="font-mono text-xs w-10 shrink-0 ${t.status === 'done' ? 'text-muted' : 'text-strong'}">${esc(t.id)}</span>
+      <span class="flex-1 min-w-0 truncate ${t.status === 'done' ? 'text-muted' : 'text-strong'}">${esc(t.title)}</span>
+      <span class="hidden sm:inline shrink-0">${wait}</span>
+      <span class="shrink-0 w-14 text-right">${ac}</span>
+    </div>`;
+}
+
+const groupsOf = f => f.milestones.map(m => ({ m, ts: m.tickets.filter(matches) })).filter(g => g.ts.length || (state.status === 'all' && !state.q));
+
+function renderList(f) {
+  const groups = groupsOf(f);
+  if (!groups.some(g => g.ts.length)) return empty('No ticket matches the filter.');
+  return groups.map(({ m, ts }) => `
+    <section class="mb-8">
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span class="font-mono text-xs font-semibold text-strong">${esc(m.id)}</span>
+        <span class="text-xs">${esc(m.name)}</span>
+        ${msBadge(m.state)}
+        ${m.undeclared ? '<span class="chip" title="Tickets name this milestone, but spec.md does not declare it">not in spec</span>' : ''}
+        <span class="ml-auto font-mono text-[11px] text-muted">${m.counts.done}/${m.counts.total} done</span>
+      </div>
+      <div class="mb-2">${bar(m.counts, 'h-0.5')}</div>
+      ${m.text ? `
+      <details class="mb-2 group">
+        <summary class="cursor-pointer select-none text-[11px] text-muted hover:text-strong list-none flex items-center gap-1"><span class="font-mono group-open:rotate-90 inline-block transition-transform">›</span> what it delivers</summary>
+        <div class="md mt-2 border-l border-line pl-3 text-xs">${renderMarkdown(m.text)}</div>
+      </details>` : ''}
+      <div class="border border-line">${ts.length ? ts.map(t => ticketRow(f, t)).join('') : '<div class="px-3 py-3 text-xs text-muted">No tickets.</div>'}</div>
+    </section>`).join('');
+}
+
+// Todo splits in two: a ready ticket is on the build's frontier, a waiting one has an open blocker.
+const BOARD_COLS = [
+  { key: 'ready', label: 'ready', hint: 'Todo, every blocker done: the build can take it next', has: t => t.ready },
+  { key: 'waiting', label: 'waiting', hint: 'Todo, waiting on an open blocker', has: t => t.status === 'todo' && !t.ready },
+  { key: 'in-progress', label: 'in progress', hint: 'A Builder is on it', has: t => t.status === 'in-progress' },
+  { key: 'failed', label: 'failed', hint: 'Both attempts failed; the build stopped here', has: t => t.status === 'failed' },
+  { key: 'done', label: 'done', hint: 'Committed on the milestone branch', has: t => t.status === 'done' },
+];
+const colGlyph = k => k === 'ready' ? '<span class="st" title="ready"></span>' : glyph(k === 'waiting' ? 'todo' : k);
+
+function boardCard(f, t) {
+  const open = t.status !== 'done';
+  const refs = (label, ids) => ids.length ? `<span>${label} ${ids.map(id => ticketRef(f, id)).join(' ')}</span>` : '';
+  const deps = open ? [refs('waits', t.waitingOn), refs('blocks', t.blocks)].filter(Boolean).join('') : '';
+  return `
+    <div class="border border-line bg-bg hover:border-strong cursor-pointer p-2.5" data-go="${href(f.slug, 'tickets', t.id)}">
+      <div class="flex items-center gap-1.5 text-[11px] font-mono text-muted">
+        ${glyph(t.status)}<span class="text-strong">${esc(t.id)}</span>
+        ${t.ac.total ? `<span class="ml-auto" title="Acceptance criteria">${acText(t)} AC</span>` : ''}
+      </div>
+      <div class="mt-1 text-[13px] leading-snug ${open ? 'text-strong' : 'text-muted'}">${esc(t.title)}</div>
+      ${deps ? `<div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">${deps}</div>` : ''}
+    </div>`;
+}
+
+// Kanban: one column per flow state, one swimlane per milestone when there are several.
+function renderBoard(f) {
+  const lanes = f.milestones.length > 1;
+  const groups = lanes ? groupsOf(f) : [{ m: null, ts: f.tickets.filter(matches) }];
+  if (!groups.some(g => g.ts.length)) return empty('No ticket matches the filter.');
+  const all = groups.flatMap(g => g.ts);
+  const head = BOARD_COLS.map(c => `
+    <div class="bg-bg flex items-center gap-1.5 px-3 h-9" title="${esc(c.hint)}">${colGlyph(c.key)}<span class="label text-fg">${esc(c.label)}</span><span class="ml-auto font-mono text-[11px] text-muted">${all.filter(c.has).length}</span></div>`).join('');
+  const body = groups.map(({ m, ts }) => `
+    ${m ? `
+    <div class="bg-panel flex items-center gap-2 px-3 h-8" style="grid-column: 1 / -1">
+      <span class="font-mono text-xs font-semibold text-strong">${esc(m.id)}</span>
+      <span class="text-xs truncate">${esc(m.name)}</span>
+      ${msBadge(m.state)}
+      <span class="ml-auto font-mono text-[11px] text-muted">${m.counts.done}/${m.counts.total} done</span>
+    </div>` : ''}
+    ${BOARD_COLS.map(c => {
+      const cs = ts.filter(c.has);
+      return `<div class="bg-bg p-2 space-y-2 min-h-[3.5rem]">${cs.map(t => boardCard(f, t)).join('') || '<div class="px-1 py-1 text-[11px] text-muted">—</div>'}</div>`;
+    }).join('')}`).join('');
+  return `
+    <div class="overflow-x-auto border border-line">
+      <div class="grid gap-px bg-line min-w-[960px]" style="grid-template-columns: repeat(${BOARD_COLS.length}, minmax(0, 1fr))">${head}${body}</div>
+    </div>`;
+}
+
+// ─── Dependency graph ───────────────────────────────────────────────────────
+
+const G = { w: 196, h: 62, dummy: 8, col: 60, row: 14, pad: 20, band: 26, chars: 27 };
+const isDummy = v => v.startsWith('~');
+
+// Columns by longest blocked-by path, so every arrow points right. With milestones given,
+// each milestone gets its own band of columns, in order, and no ticket sits left of its band.
+// An edge that skips columns runs through placeholder slots, and a few sweeps order each
+// column by the mean position of its neighbours to keep crossings down.
+function layoutGraph(tickets, milestones) {
+  const byId = new Map(tickets.map(t => [t.id, t]));
+  const ids = uniq([...tickets.map(t => t.id), ...tickets.flatMap(t => t.blockedBy)]);
+  const layer = new Map();
+  const floor = new Map();
+  const stack = new Set();
+  const depth = id => {
+    if (layer.has(id)) return layer.get(id);
+    if (stack.has(id)) return -1;   // a cycle: its closing edge is drawn as a back edge
+    stack.add(id);
+    const t = byId.get(id);
+    const d = Math.max(floor.get(t?.ms) ?? 0, 1 + Math.max(-1, ...(t?.blockedBy || []).map(depth)));
+    stack.delete(id);
+    layer.set(id, d);
+    return d;
+  };
+  let bands = null;
+  if (milestones) {
+    bands = [];
+    let start = 0;
+    for (const m of milestones) {
+      if (!m.tickets.length) continue;
+      floor.set(m, start);
+      const end = Math.max(start, ...m.tickets.map(t => depth(t.id)));
+      bands.push({ m, from: start, to: end });
+      start = end + 1;
+    }
+  }
+  ids.forEach(depth);
+
+  const layers = [];
+  const put = (v, l) => (layers[l] ||= []).push(v);
+  ids.forEach(id => put(id, layer.get(id)));
+  const ups = new Map(), downs = new Map();
+  const link = (a, b) => {
+    if (!downs.has(a)) downs.set(a, []);
+    if (!ups.has(b)) ups.set(b, []);
+    downs.get(a).push(b);
+    ups.get(b).push(a);
+  };
+  const edges = [];
+  let n = 0;
+  for (const t of tickets) for (const b of t.blockedBy) {
+    const la = layer.get(b), lb = layer.get(t.id);
+    const back = lb <= la;
+    const chain = [b];
+    if (!back) for (let l = la + 1; l < lb; l++) { const d = `~${n++}`; put(d, l); chain.push(d); }
+    chain.push(t.id);
+    if (!back) for (let i = 1; i < chain.length; i++) link(chain[i - 1], chain[i]);
+    edges.push({ from: b, to: t.id, chain, back });
+  }
+  for (let l = 0; l < layers.length; l++) layers[l] ||= [];
+
+  const pos = new Map();
+  const index = L => L.forEach((v, i) => pos.set(v, i));
+  layers.forEach(index);
+  const mean = (v, adj) => { const ns = adj.get(v); return ns?.length ? ns.reduce((s, u) => s + pos.get(u), 0) / ns.length : pos.get(v); };
+  for (let pass = 0; pass < 8; pass++) {
+    const down = pass % 2 === 0;
+    for (let i = 1; i < layers.length; i++) {
+      const L = layers[down ? i : layers.length - 1 - i];
+      const key = new Map(L.map(v => [v, mean(v, down ? ups : downs)]));
+      L.sort((a, b) => key.get(a) - key.get(b));
+      index(L);
+    }
+  }
+
+  // Each slot drifts toward the mean height of its neighbours; packing it once pushing
+  // down and once pushing up, then averaging, keeps the order and the spacing.
+  const hOf = v => isDummy(v) ? G.dummy : G.h;
+  const span = L => L.reduce((s, v) => s + hOf(v), 0) + G.row * Math.max(0, L.length - 1);
+  const tall = Math.max(0, ...layers.map(span));
+  const top = new Map();
+  for (const L of layers) { let y = (tall - span(L)) / 2; for (const v of L) { top.set(v, y); y += hOf(v) + G.row; } }
+  const mid = v => top.get(v) + hOf(v) / 2;
+  for (let pass = 0; pass < 12; pass++) {
+    for (const L of pass % 2 ? [...layers].reverse() : layers) {
+      const want = L.map(v => { const ns = [...(ups.get(v) || []), ...(downs.get(v) || [])]; return ns.length ? ns.reduce((s, u) => s + mid(u), 0) / ns.length - hOf(v) / 2 : top.get(v); });
+      const fwd = [], bwd = [];
+      L.forEach((v, i) => { fwd[i] = i ? Math.max(want[i], fwd[i - 1] + hOf(L[i - 1]) + G.row) : want[i]; });
+      for (let i = L.length - 1; i >= 0; i--) bwd[i] = i < L.length - 1 ? Math.min(want[i], bwd[i + 1] - hOf(L[i]) - G.row) : want[i];
+      L.forEach((v, i) => top.set(v, (fwd[i] + bwd[i]) / 2));
+    }
+  }
+  const minTop = Math.min(0, ...top.values());
+  const head = bands ? G.band : 0;
+  const at = new Map();
+  layers.forEach((L, l) => { for (const v of L) at.set(v, { x: G.pad + l * (G.w + G.col), y: G.pad + head + top.get(v) - minTop, h: hOf(v) }); });
+  const bottom = Math.max(0, ...[...at.values()].map(p => p.y + p.h)) + G.pad;
+
+  const curve = (a, b) => { const dx = Math.max(24, (b.x - a.x) / 2); return ` C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`; };
+  for (const e of edges) {
+    const s = at.get(e.chain[0]);
+    let cur = { x: s.x + G.w, y: s.y + s.h / 2 };
+    e.d = `M${cur.x},${cur.y}`;
+    for (const v of e.chain.slice(1)) {
+      const p = at.get(v);
+      const mid = p.y + p.h / 2;
+      e.d += curve(cur, { x: p.x, y: mid });
+      cur = { x: p.x + G.w, y: mid };
+      if (isDummy(v)) e.d += ` L${cur.x},${cur.y}`;
+    }
+  }
+  return {
+    nodes: ids.map(id => ({ id, t: byId.get(id) || null, ...at.get(id) })),
+    edges,
+    bands,
+    width: G.pad * 2 + layers.length * G.w + Math.max(0, layers.length - 1) * G.col,
+    height: bottom,
+  };
+}
+
+function wrapText(s, n, max) {
+  const lines = [];
+  for (const w of String(s).split(/\s+/).filter(Boolean)) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && (last + ' ' + w).length <= n) lines[lines.length - 1] = last + ' ' + w;
+    else lines.push(w);
+  }
+  if (lines.length > max) { lines.length = max; lines[max - 1] += '…'; }
+  return lines.map(l => l.length > n ? l.slice(0, n - 1) + '…' : l);
+}
+
+// The fewest tickets still to build one after another: the spec's critical path.
+function longestOpenChain(f) {
+  const memo = new Map();
+  const len = id => {
+    const t = f.byId.get(id);
+    if (!t || t.status === 'done') return 0;
+    if (memo.has(id)) return memo.get(id);
+    memo.set(id, 1);
+    const n = 1 + Math.max(0, ...t.blockedBy.map(len));
+    memo.set(id, n);
+    return n;
+  };
+  return Math.max(0, ...f.tickets.map(t => len(t.id)));
+}
+
+const svgGlyph = (s, x = 10, y = 11) => `<rect x="${x}" y="${y}" width="10" height="10" class="sg sg-${esc(s || 'ghost')}"/>${s === 'in-progress' ? `<rect x="${x}" y="${y}" width="5" height="10" class="sg-fill"/>` : ''}`;
+
+function renderGraph(f) {
+  const multi = f.milestones.length > 1;
+  const byMilestone = multi && state.layout === 'milestones';
+  const g = layoutGraph(f.tickets, byMilestone ? f.milestones : null);
+  const chain = longestOpenChain(f);
+  const faded = id => { const t = f.byId.get(id); return t && !matches(t); };
+  const node = ({ id, t, x, y }) => {
+    const cls = !t ? 'g-ghost' : t.ready ? 'g-ready' : `g-${t.status}`;
+    const side = !t ? '' : t.ready ? 'ready' : t.status === 'todo' ? `waits ${t.waitingOn.length}` : '';
+    const lines = t ? wrapText(t.title, G.chars, 2) : ['no ticket with this id'];
+    return `
+      <g class="gnode ${cls} ${faded(id) ? 'g-faded' : ''}" data-node="${esc(id)}" ${t ? `data-go="${href(f.slug, 'tickets', id)}"` : ''} transform="translate(${x},${y})">
+        <title>${esc(t ? `${id} · ${t.title} (${STATUS_LABEL[t.status]})` : `${id}: named in blocked-by, but no ticket has this id`)}</title>
+        <rect class="box" width="${G.w}" height="${G.h}"/>
+        ${svgGlyph(t?.status)}
+        <text class="gid" x="27" y="20">${esc(id)}${multi && !byMilestone && t?.ms ? ` · ${esc(t.ms.id)}` : ''}</text>
+        ${side ? `<text class="gid" x="${G.w - 10}" y="20" text-anchor="end">${esc(side)}</text>` : ''}
+        ${lines.map((l, i) => `<text class="gtitle" x="10" y="${39 + i * 15}">${esc(l)}</text>`).join('')}
+      </g>`;
+  };
+  const edge = e => {
+    const src = f.byId.get(e.from);
+    const cls = !src ? 'e-ghost' : src.status === 'done' ? 'e-done' : 'e-pending';
+    return `<path class="gedge ${cls} ${e.back ? 'e-back' : ''} ${faded(e.from) || faded(e.to) ? 'g-faded' : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" marker-end="url(#g-arrow-${cls === 'e-pending' ? 'on' : 'off'})"/>`;
+  };
+  const step = G.w + G.col;
+  const band = ({ m, from, to }, k) => {
+    const x = G.pad + from * step;
+    const w = (to - from + 1) * step - G.col;
+    const label = wrapText(`${msTitle(m)} · ${m.counts.done}/${m.counts.total}`, Math.floor(w / 7) - 3, 1)[0];
+    return `
+      <g>
+        <title>${esc(msTitle(m))}: ${esc(MS_LABEL[m.state])}</title>
+        ${k ? `<line class="gsep" x1="${x - G.col / 2}" y1="${G.pad / 2}" x2="${x - G.col / 2}" y2="${g.height - G.pad / 2}"/>` : ''}
+        ${svgGlyph({ 'not-started': 'todo', 'building': 'in-progress' }[m.state] || m.state, x, G.pad - 2)}
+        <text class="gband" x="${x + 16}" y="${G.pad + 7}">${esc(label)}</text>
+      </g>`;
+  };
+  const key = cls => `<svg class="graph" width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" class="gedge ${cls}"/></svg>`;
+  return `
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px] text-muted">
+      ${multi ? `<div class="flex"><button data-layout="milestones" class="btn ${byMilestone ? 'btn-solid' : ''}">Milestones</button><button data-layout="deps" class="btn -ml-px ${byMilestone ? '' : 'btn-solid'}">Dependencies</button></div>` : ''}
+      <span class="font-mono">${f.tickets.length} tickets · ${g.edges.length} dependencies${chain ? ` · <span title="The fewest open tickets that still have to be built one after another">longest open chain ${chain}</span>` : ''}</span>
+      <span class="inline-flex items-center gap-1.5">${key('e-pending')}blocker open</span>
+      <span class="inline-flex items-center gap-1.5">${key('e-done')}blocker done</span>
+      <span class="sm:ml-auto">Hover a ticket to trace its chain; click it to open.</span>
+    </div>
+    ${g.edges.length ? '' : '<p class="mb-2 text-xs text-muted">No ticket declares <code class="font-mono">blocked-by</code>: each one can start on its own.</p>'}
+    <div class="overflow-auto border border-line bg-panel">
+      <svg id="depGraph" class="graph block" width="${g.width}" height="${g.height}" viewBox="0 0 ${g.width} ${g.height}" role="img" aria-label="Ticket dependency graph: an arrow runs from a blocker to the ticket it blocks">
+        <defs>
+          <pattern id="g-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.5" height="4" style="fill: rgb(var(--strong))"/></pattern>
+          <marker id="g-arrow-on" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill: rgb(var(--strong))"/></marker>
+          <marker id="g-arrow-off" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill: rgb(var(--muted)); fill-opacity: .6"/></marker>
+        </defs>
+        <g>${(g.bands || []).map(band).join('')}</g>
+        <g>${g.edges.map(edge).join('')}</g>
+        <g>${g.nodes.map(node).join('')}</g>
+      </svg>
+    </div>`;
+}
+
+// Hovering a node keeps it, everything it waits on and everything it unblocks; dims the rest.
+function traceGraph(id) {
+  const svg = $('#depGraph');
+  if (!svg || (svg.dataset.hover || '') === id) return;
+  svg.dataset.hover = id;
+  svg.classList.toggle('g-hover', !!id);
+  for (const el of svg.querySelectorAll('.g-on')) el.classList.remove('g-on');
+  const f = id && feature(route().slug);
+  if (!f) return;
+  const reach = (next) => {
+    const seen = new Set([id]);
+    const go = n => { for (const m of next(n)) if (!seen.has(m)) { seen.add(m); go(m); } };
+    go(id);
+    return seen;
+  };
+  const up = reach(n => f.byId.get(n)?.blockedBy || []);
+  const down = reach(n => f.byId.get(n)?.blocks || []);
+  for (const el of svg.querySelectorAll('[data-node]')) if (up.has(el.dataset.node) || down.has(el.dataset.node)) el.classList.add('g-on');
+  for (const el of svg.querySelectorAll('[data-from]')) {
+    const { from, to } = el.dataset;
+    if ((up.has(from) && up.has(to)) || (down.has(from) && down.has(to))) el.classList.add('g-on');
+  }
+}
+
+function renderDocTab(f) {
+  if (!f.spec) return empty('No <code class="font-mono">spec.md</code> in this folder.');
+  const toc = f.spec.headings.filter(h => h.level <= 3);
+  return `
+    <div class="flex gap-8">
+      ${toc.length ? `
+      <aside class="hidden xl:block w-52 shrink-0">
+        <div class="sticky top-4">
+          <div class="label mb-2">Contents</div>
+          <nav class="text-xs space-y-1 border-l border-line">
+            ${toc.map(h => `<a href="${href(f.slug, 'spec', h.id)}" class="block truncate hover:text-strong text-muted ${h.level === 3 ? 'pl-6' : 'pl-3'}">${esc(h.text)}</a>`).join('')}
+          </nav>
+        </div>
+      </aside>` : ''}
+      <article id="doc" class="md flex-1 min-w-0 max-w-3xl">${renderMarkdown(f.spec.body)}</article>
+    </div>`;
+}
+
+// Under each milestone heading of the spec, its state and the tickets that build it.
+function decorateSpec(doc, f) {
+  if (!f) return;
+  const h2 = [...doc.querySelectorAll('h2')].find(x => x.textContent.trim().toLowerCase() === 'milestones');
+  if (!h2) return;
+  for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
+    if (el.tagName !== 'H3') continue;
+    const id = norm(el.textContent.trim().match(MILESTONE_HEADING)?.[1]);
+    const m = f.milestones.find(x => x.id === id);
+    if (!m?.tickets.length) continue;
+    const div = document.createElement('div');
+    div.className = 'refs';
+    div.innerHTML = msBadge(m.state) + m.tickets.map(t => `<a href="${href(f.slug, 'tickets', t.id)}" class="chip hover:border-strong hover:text-strong no-underline" title="${esc(t.title)}">${glyph(t.status)}${esc(t.id)}</a>`).join('');
+    el.after(div);
+    el = div;
+  }
+}
+
+// ─── Ticket drawer ──────────────────────────────────────────────────────────
+
+function renderDrawer() {
+  const r = route();
+  const drawer = $('#drawer');
+  const f = r.page === 'feature' && r.tab === 'tickets' && r.extra ? feature(r.slug) : null;
+  const t = f?.byId.get(r.extra);
+  const open = !!t;
+  drawer.classList.toggle('translate-x-full', !open);
+  $('#scrim').classList.toggle('hidden', !open);
+  if (!open) { drawer.dataset.key = ''; return; }
+
+  const key = `${f.slug}/${t.id}`;
+  const keepScroll = drawer.dataset.key === key ? drawer.scrollTop : 0;
+  drawer.dataset.key = key;
+
+  const meta = (label, value) => `<div class="px-3 py-2.5 bg-bg"><div class="label">${label}</div><div class="mt-1 text-xs">${value || '<span class="text-muted">—</span>'}</div></div>`;
+  const m = t.ms;
+  const path = `${f.basePath}/${t.file}`;
+
+  drawer.innerHTML = `
+    <div class="sticky top-0 bg-bg border-b border-line flex items-center gap-2 px-4 h-11 z-10">
+      <span class="font-mono text-[11px] text-muted truncate" title="${esc(path)}">${esc(path)}</span>
+      <button data-copy="${esc(path)}" class="btn ml-auto">Copy path</button>
+      <a href="${href(f.slug, 'tickets')}" class="btn" title="Close (Esc)">✕</a>
+    </div>
+    <div class="px-5 py-5">
+      <div class="flex items-center gap-2">
+        ${glyph(t.status)}
+        <span class="label text-fg">${esc(STATUS_LABEL[t.status])}</span>
+        <span class="font-mono text-xs text-muted">· ticket ${esc(t.id)}${m ? ` · ${esc(msTitle(m))}` : ''}</span>
+      </div>
+      <h2 class="mt-2 text-lg font-semibold text-strong leading-snug">${esc(t.title)}</h2>
+
+      ${t.status === 'failed' ? `
+      <div class="mt-4 border border-strong px-3 py-2 flex items-start gap-2 text-xs">${glyph('failed')}<span>Both attempts failed and the build stopped here. The build's report says why, and the working tree holds the last attempt.</span></div>` : ''}
+
+      <div class="mt-5 grid grid-cols-2 gap-px bg-line border border-line">
+        ${meta('Blocked by', t.blockedBy.map(id => ticketRef(f, id)).join('<span class="text-line"> · </span>'))}
+        ${meta('Blocks', t.blocks.map(id => ticketRef(f, id)).join('<span class="text-line"> · </span>'))}
+        ${meta('Milestone', m && !m.unassigned ? `<span class="font-mono">${esc(m.id)}</span> ${msBadge(m.state)}` : '')}
+        ${meta('Acceptance', t.ac.total ? `<span class="font-mono">${t.ac.total}</span> criteria${t.ac.checked ? `, <span class="font-mono">${t.ac.checked}</span> checked` : ''}` : '')}
+      </div>
+
+      ${m?.text ? `
+      <h3 class="label mt-6 mb-2">Milestone ${esc(msTitle(m))}</h3>
+      <div class="md border border-line px-3 py-2.5 text-xs">${renderMarkdown(m.text)}</div>` : ''}
+
+      <h3 class="label mt-6 mb-2">Ticket</h3>
+      <article class="md">${renderMarkdown(t.body)}</article>
+    </div>`;
+  enhanceMarkdown(drawer);
+  drawer.scrollTop = keepScroll;
+}
+
+// ─── Main render ────────────────────────────────────────────────────────────
+
+function render() {
+  renderHeader();
+  renderSidebar();
+  const main = $('#main');
+  const r = route();
+  const key = r.page === 'feature' ? `${r.slug}/${r.tab}/${r.tab === 'tickets' ? '' : r.extra || ''}` : r.page;
+  const keepScroll = key === state.lastRouteKey ? main.scrollTop : 0;
+
+  if (!state.repo || state.repo.error) main.innerHTML = renderWelcome();
+  else if (r.page === 'overview') main.innerHTML = renderOverview();
+  else main.innerHTML = renderFeature(r);
+
+  const doc = $('#doc');
+  if (doc) { enhanceMarkdown(doc); decorateSpec(doc, feature(r.slug)); }
+  main.querySelectorAll('.md').forEach(el => { if (el !== doc && !el.closest('#doc')) enhanceMarkdown(el); });
+
+  const anchorChanged = key !== state.lastRouteKey;
+  state.lastRouteKey = key;
+  main.scrollTop = keepScroll;
+  if (anchorChanged && r.extra && r.tab !== 'tickets') {
+    const target = document.getElementById(r.extra);
+    if (target) { target.scrollIntoView({ block: 'start' }); target.classList.add('flash'); }
+  }
+  renderDrawer();
+}
+
+// ─── Loading ────────────────────────────────────────────────────────────────
+
+async function connect(src) {
+  state.src = src;
+  state.pending = null;
+  await reload(true);
+}
+
+async function reload(force) {
+  if (!state.src || state.loading) return;
+  state.loading = true;
+  try {
+    const repo = await loadRepo(state.src);
+    state.loadedAt = new Date();
+    if (force || !state.repo || repo.sig !== state.repo.sig) {
+      state.repo = repo;
+      render();
+    } else renderHeader();
+  } catch (err) {
+    console.error('[sdd] load failed', err);
+    if (err?.name === 'NotAllowedError' || err?.name === 'NotFoundError') {
+      state.pending = state.src.root || null;
+      state.src = null;
+      state.repo = null;
+      render();
+    }
+  } finally {
+    state.loading = false;
+  }
+}
+
+async function openFolder() {
+  if ('showDirectoryPicker' in window) {
+    try {
+      const h = await window.showDirectoryPicker({ id: 'sdd-repo', mode: 'read' });
+      await idb.set(ROOT_KEY, h);
+      return connect(new HandleSource(h));
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      console.warn('[sdd] directory picker unavailable, using the file input', err);
+    }
+  }
+  $('#dirInput').click();
+}
+
+async function reconnect(pickOnFail = true) {
+  const h = state.pending;
+  if (!h) return;
+  try {
+    if ((await h.requestPermission({ mode: 'read' })) === 'granted') return connect(new HandleSource(h));
+  } catch (err) {
+    console.warn('[sdd] reconnect failed', err);
+  }
+  if (pickOnFail) openFolder();
+}
+
+// The browser forgets the grant between sessions and only asks again on a user gesture,
+// so the first click or key anywhere on the page reopens the remembered folder.
+function reconnectOnFirstGesture() {
+  const once = e => {
+    document.removeEventListener('click', once, true);
+    document.removeEventListener('keydown', once, true);
+    if (e.target.closest?.('[data-act], #openBtn, #reloadBtn')) return;
+    reconnect(false);
+  };
+  document.addEventListener('click', once, true);
+  document.addEventListener('keydown', once, true);
+}
+
+$('#dirInput').addEventListener('change', e => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (files.length) connect(new FileListSource(files));
+});
+
+// ─── Events ─────────────────────────────────────────────────────────────────
+
+$('#openBtn').addEventListener('click', openFolder);
+$('#reloadBtn').addEventListener('click', () => state.src?.live ? reload(true) : openFolder());
+$('#liveBtn').addEventListener('click', () => { state.live = !state.live; store.set('live', state.live); renderHeader(); });
+$('#scrim').addEventListener('click', () => { const r = route(); location.hash = href(r.slug, 'tickets'); });
+window.addEventListener('hashchange', render);
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const r = route();
+  if (r.page === 'feature' && r.tab === 'tickets' && r.extra) location.hash = href(r.slug, 'tickets');
+});
+
+document.addEventListener('click', e => {
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'open') return openFolder();
+  if (act === 'reconnect') return reconnect();
+
+  const status = e.target.closest('[data-status]')?.dataset.status;
+  if (status) { state.status = status; return render(); }
+  const view = e.target.closest('[data-view]')?.dataset.view;
+  if (view) { state.view = view; store.set('view', view); return render(); }
+  const layout = e.target.closest('[data-layout]')?.dataset.layout;
+  if (layout) { state.layout = layout; store.set('layout', layout); return render(); }
+
+  const copy = e.target.closest('[data-copy]');
+  if (copy) {
+    navigator.clipboard?.writeText(copy.dataset.copy).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy path'; }, 1200); }).catch(() => {});
+    return;
+  }
+  const go = e.target.closest('[data-go]');
+  if (go && !e.target.closest('a')) location.hash = go.dataset.go;
+});
+
+document.addEventListener('mouseover', e => traceGraph(e.target.closest?.('#depGraph [data-node]')?.dataset.node || ''));
+
+document.addEventListener('input', e => {
+  if (e.target.id !== 'search') return;
+  state.q = e.target.value;
+  const f = feature(route().slug);
+  if (f) $('#ticketArea').innerHTML = renderTicketArea(f);
+});
+
+setInterval(() => {
+  if (state.live && state.src?.live && !document.hidden) reload(false);
+}, 3000);
+
+(async function boot() {
+  render();
+  const h = await idb.get(ROOT_KEY);
+  if (!h?.queryPermission) return;
+  try {
+    if ((await h.queryPermission({ mode: 'read' })) === 'granted') return connect(new HandleSource(h));
+  } catch {}
+  state.pending = h;
+  render();
+  reconnectOnFirstGesture();
+})();
+</script>
+</body>
+</html>
