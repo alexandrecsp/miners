@@ -48,6 +48,8 @@ export function newGame(seed: number): GameState {
     credits: STARTING_CREDITS,
     storage: fillRecord((): StorageEntry => ({ amount: 0, tier: STARTING_STORAGE_TIER })),
     grid: { size, unlockedSize: startUnlockedSize, deposits: [], rocks: [], nextDepositSpawn: 0 },
+    lifetime: { creditsEarned: 0, mined: { ore: 0, crystal: 0 }, refined: fillRecord(() => 0), sold: fillRecord(() => 0) },
+    unlocks: [],
     machines: [],
     modInventory: {},
     market: fillRecord((r) => RESOURCE_DEFS[r].basePrice),

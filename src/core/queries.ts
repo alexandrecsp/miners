@@ -1,11 +1,11 @@
-import { isBroken, isMiner, MACHINE_DEFS, MOD_DEFS, MAX_CONDITION, REPAIR_WEAR_DIVISOR, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, STORAGE_TIER_MULTIPLIER } from './defs'
-import type { MachineDefId, ModDefId, RecipeDef, RecipeId, ResourceId, StatName } from './defs'
+import { isBroken, isMiner, MACHINE_DEFS, MOD_DEFS, MAX_CONDITION, REPAIR_WEAR_DIVISOR, RECIPE_DEFS, recipeInputs, RESOURCE_DEFS, SHOP, STAT_NAMES, MAX_STORAGE_TIER, STORAGE_TIER_MULTIPLIER, STORAGE_UPGRADE_COSTS, UNLOCK_DEFS } from './defs'
+import type { LifetimeCounterRef, MachineDefId, ModDefId, RecipeDef, RecipeId, ResourceId, StatName, UnlockDef, UnlockId } from './defs'
 import { compareIds } from './ids'
 import { fail, ok } from './result'
 import type { Result } from './result'
 import { effectiveStat } from './stats'
 import { sameTile } from './tile'
-import type { Deposit, GameState, GridShape, Machine, Offer, Tile } from './types'
+import type { Deposit, GameState, GridShape, LifetimeCounters, Machine, Offer, Tile } from './types'
 
 /** The part of the Game State the Placement check reads. */
 export type PlacementView = Pick<GameState, 'machines' | 'grid'>
@@ -19,7 +19,11 @@ export function isTileUnlocked(grid: GridShape, tile: Tile): boolean {
 
 /** The Storage Cap of a Resource at its current Storage Tier. */
 export function storageCap(state: Pick<GameState, 'storage'>, resource: ResourceId): number {
-  const { tier } = state.storage[resource]
+  return tierCap(resource, state.storage[resource].tier)
+}
+
+/** A Resource's Storage Cap at a Storage Tier. */
+function tierCap(resource: ResourceId, tier: number): number {
   return RESOURCE_DEFS[resource].baseStorageCap * STORAGE_TIER_MULTIPLIER ** (tier - 1)
 }
 
@@ -275,10 +279,17 @@ export function checkRepair(state: Pick<GameState, 'machines' | 'credits'>, mach
 }
 
 /** Whether a Mod may be bought and what it costs: the one check the Buy Mod action and the Mods panel share. */
-export function checkBuyMod(state: Pick<GameState, 'credits'>, modId: ModDefId): Result<number> {
+export function checkBuyMod(state: Pick<GameState, 'credits' | 'unlocks'>, modId: ModDefId): Result<number> {
   if (!Object.hasOwn(MOD_DEFS, modId)) return fail('fail.modNotFound')
-  const price = MOD_DEFS[modId].price
+  if (modLockedBy(state, modId)) return fail('fail.modLocked')
+  const { price } = MOD_DEFS[modId]
   return state.credits >= price ? ok(price) : fail('fail.notEnoughCredits')
+}
+
+/** The Unlock a Mod waits for before it may be bought; null when it needs none or it is earned. */
+export function modLockedBy(state: Pick<GameState, 'unlocks'>, modId: ModDefId): UnlockId | null {
+  const { requiresUnlock } = MOD_DEFS[modId]
+  return requiresUnlock && !isUnlocked(state, requiresUnlock) ? requiresUnlock : null
 }
 
 /** Whether a Mod Def fits a Machine Def. */
@@ -305,4 +316,63 @@ export function checkRemoveMod(state: Pick<GameState, 'machines'>, machineId: st
   const fitted = machine.mods[slot]
   if (fitted === null || fitted === undefined) return fail('fail.modSlotEmpty')
   return ok(fitted as ModDefId)
+}
+
+/** The current value of a Lifetime Counter. */
+export function counterValue(lifetime: LifetimeCounters, counter: LifetimeCounterRef): number {
+  switch (counter.kind) {
+    case 'creditsEarned':
+      return lifetime.creditsEarned
+    case 'mined':
+      return lifetime.mined[counter.resource]
+    case 'refined':
+    case 'sold':
+      return lifetime[counter.kind][counter.resource]
+  }
+}
+
+/** Whether an Unlock's Lifetime Counter has reached its threshold. */
+export function isUnlockReached(lifetime: LifetimeCounters, def: UnlockDef): boolean {
+  return counterValue(lifetime, def.counter) >= def.threshold
+}
+
+/** Whether an Unlock has been earned. */
+export function isUnlocked(state: Pick<GameState, 'unlocks'>, id: UnlockId): boolean {
+  return state.unlocks.includes(id)
+}
+
+/** The earned Unlocks, in the Unlocks panel's order. */
+export function earnedUnlocks(state: Pick<GameState, 'unlocks'>): UnlockDef[] {
+  return UNLOCK_DEFS.filter((def) => isUnlocked(state, def.id))
+}
+
+/** The progress towards each unearned Unlock: its def, which holds the threshold, and its counter's current value, in the Unlocks panel's order. */
+export function unlockProgress(state: Pick<GameState, 'lifetime' | 'unlocks'>): { def: UnlockDef; value: number }[] {
+  return UNLOCK_DEFS.filter((def) => !isUnlocked(state, def.id)).map((def) => ({ def, value: counterValue(state.lifetime, def.counter) }))
+}
+
+/** The next Storage Upgrade of one Resource: the Storage Tier it reaches, that tier's cap and cost, and the Unlock it waits for. */
+export interface StorageUpgrade {
+  tier: number
+  cap: number
+  cost: number
+  unlockId: UnlockId
+  unlocked: boolean
+}
+
+/** The next Storage Upgrade of a Resource; null at the highest Storage Tier. */
+export function nextStorageUpgrade(state: Pick<GameState, 'storage' | 'unlocks'>, resource: ResourceId): StorageUpgrade | null {
+  const tier = state.storage[resource].tier + 1
+  if (tier > MAX_STORAGE_TIER) return null
+  const unlock = UNLOCK_DEFS.find((def) => def.effect.kind === 'storageTier' && def.effect.tier === tier)!
+  return { tier, cap: tierCap(resource, tier), cost: STORAGE_UPGRADE_COSTS[tier]!, unlockId: unlock.id, unlocked: isUnlocked(state, unlock.id) }
+}
+
+/** Whether a Resource's Storage may be upgraded now: the Storage Upgrade it would buy, or why not. */
+export function checkStorageUpgrade(state: Pick<GameState, 'storage' | 'unlocks' | 'credits'>, resource: ResourceId): Result<StorageUpgrade> {
+  const upgrade = nextStorageUpgrade(state, resource)
+  if (!upgrade) return fail('fail.maxStorageTier')
+  if (!upgrade.unlocked) return fail('fail.storageTierLocked')
+  if (state.credits < upgrade.cost) return fail('fail.notEnoughCredits')
+  return ok(upgrade)
 }

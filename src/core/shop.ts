@@ -2,7 +2,7 @@ import type { Draft } from 'immer'
 import { DEFAULT_RECIPE, isMiner, MACHINE_DEFS, SHOP, STARTING_CONDITION, STAT_NAMES } from './defs'
 import type { MachineDefId, StatName } from './defs'
 import { nextId } from './ids'
-import { offerPrice, rollQuality } from './queries'
+import { earnedUnlocks, offerPrice, rollQuality } from './queries'
 import type { Rng } from './rng'
 import type { GameState, Machine, Offer } from './types'
 
@@ -30,13 +30,15 @@ function rollMachine(rng: Rng, defId: MachineDefId, id: string): Machine {
   return buildMachine(id, defId, baseStats)
 }
 
-function availableDefIds(): MachineDefId[] {
-  return (Object.keys(MACHINE_DEFS) as MachineDefId[]).filter((id) => MACHINE_DEFS[id].availableAtStart)
+/** The Machine Defs the Shop stocks: those available from the start and those an earned Unlock adds. */
+function availableDefIds(state: Pick<GameState, 'unlocks'>): MachineDefId[] {
+  const unlocked = earnedUnlocks(state).flatMap(({ effect }) => (effect.kind === 'machine' ? [effect.machineDefId] : []))
+  return (Object.keys(MACHINE_DEFS) as MachineDefId[]).filter((id) => MACHINE_DEFS[id].availableAtStart || unlocked.includes(id))
 }
 
 /** Replaces the Shop Stock: one Offer of each available Machine Def, the rest drawn at random from them. */
 export function fillShop(draft: Draft<GameState>, rng: Rng): void {
-  const available = availableDefIds()
+  const available = availableDefIds(draft)
   const defIds = [...available]
   while (defIds.length < SHOP.offers) defIds.push(available[Math.floor(rng.next() * available.length)]!)
   draft.shop.offers = defIds.map((defId): Offer => {

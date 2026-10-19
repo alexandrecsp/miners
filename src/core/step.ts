@@ -3,6 +3,7 @@ import type { Draft } from 'immer'
 import { marketDrift } from './market'
 import { mining } from './mining'
 import { refining } from './refining'
+import { unlocks } from './unlocks'
 import { wear } from './wear'
 import { depositSpawn } from './spawn'
 import { shopTimer } from './shop'
@@ -18,7 +19,7 @@ function clock(draft: Draft<GameState>, dt: number): void {
 }
 
 /** The Step's systems, in the order they run. */
-const PIPELINE: readonly System[] = [clock, marketDrift, shopTimer, depositSpawn, mining, refining, wear]
+const PIPELINE: readonly System[] = [clock, marketDrift, shopTimer, depositSpawn, mining, refining, wear, unlocks]
 
 export function step(draft: Draft<GameState>, dt: number, rng: Rng): void {
   const ctx: StepContext = { outputShares: new Map() }

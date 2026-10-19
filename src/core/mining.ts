@@ -1,5 +1,6 @@
 import type { Draft } from 'immer'
 import { outputFactor } from './defs'
+import { addMined } from './lifetime'
 import { effectiveStats, ROOM_EPSILON, minableDepositAt, placedMachinesInIdOrder, storageRoom } from './queries'
 import type { Rng } from './rng'
 import type { StepContext } from './stepContext'
@@ -21,7 +22,7 @@ export function mining(draft: Draft<GameState>, dt: number, _rng: Rng, ctx: Step
     const given = Math.min(wanted, room, available)
     if (given <= 0) continue
     ctx.outputShares.set(machine.id, given / wanted)
-    draft.storage[deposit.resource].amount += given
+    addMined(draft, deposit.resource, given)
     if (given >= available) {
       draft.grid.deposits = draft.grid.deposits.filter((d) => d.id !== deposit.id)
     } else {

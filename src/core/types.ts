@@ -1,4 +1,4 @@
-import type { DepositResource, MachineDefId, RecipeId, ResourceId, StatName } from './defs'
+import type { DepositResource, MachineDefId, RecipeId, ResourceId, StatName, UnlockId } from './defs'
 
 export interface Tile {
   x: number
@@ -38,6 +38,15 @@ export interface StorageEntry {
 /** The size data that decides which Tiles lie inside the Unlocked Area. */
 export type GridShape = Pick<GameState['grid'], 'size' | 'unlockedSize'>
 
+/** The Lifetime Counters: totals that only ever grow, added to through `lifetime.ts`. Unlocks read them. */
+export interface LifetimeCounters {
+  /** Credits earned from Sales. */
+  creditsEarned: number
+  mined: Record<DepositResource, number>
+  refined: Record<ResourceId, number>
+  sold: Record<ResourceId, number>
+}
+
 export interface GameState {
   saveVersion: number
   lastSeen: number
@@ -54,6 +63,8 @@ export interface GameState {
     /** Sim-clock time of the next Deposit spawn. */
     nextDepositSpawn: number
   }
+  lifetime: LifetimeCounters
+  unlocks: UnlockId[]
   machines: Machine[]
   modInventory: Record<string, number>
   market: Record<ResourceId, number>

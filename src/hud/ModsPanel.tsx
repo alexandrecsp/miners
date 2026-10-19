@@ -1,18 +1,21 @@
-import { MOD_DEFS } from '../core/defs'
+import { MOD_DEFS, unlockDef } from '../core/defs'
 import type { ModDef } from '../core/defs'
 import { formatNumber } from '../core/format'
-import { checkBuyMod } from '../core/queries'
+import { checkBuyMod, modLockedBy } from '../core/queries'
 import { t } from '../core/strings'
 import { dispatch, useGameStore } from '../store/gameStore'
 import { modEffectText } from './modText'
 import { PanelButton } from './PanelButton'
+import { unlockName } from './unlockText'
 
 function ModRow({ def }: { def: ModDef }) {
   const owned = useGameStore((s) => s.game.modInventory[def.id] ?? 0)
-  const blockedReason = useGameStore((s) => {
+  const lockedBy = useGameStore((s) => modLockedBy(s.game, def.id))
+  const failure = useGameStore((s) => {
     const check = checkBuyMod(s.game, def.id)
-    return check.ok ? '' : t(check.reason)
+    return check.ok ? null : check.reason
   })
+  const blockedReason = failure ? t(failure) : ''
   return (
     <li className="flex flex-col gap-0.5 border-b border-edge/40 pb-2 last:border-b-0">
       <div className="flex items-baseline justify-between">
@@ -26,10 +29,18 @@ function ModRow({ def }: { def: ModDef }) {
         </span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2">
-        <span className="text-xs text-ink/60">{blockedReason}</span>
-        <PanelButton enabled={blockedReason === ''} onClick={() => dispatch({ kind: 'buyMod', modId: def.id })}>
-          {t('hud.buy')}
-        </PanelButton>
+        {lockedBy ? (
+          <span className="text-xs text-ink/50">
+            {t('hud.needsUnlock')} {unlockName(unlockDef(lockedBy))}
+          </span>
+        ) : (
+          <>
+            <span className="text-xs text-ink/60">{blockedReason}</span>
+            <PanelButton enabled={blockedReason === ''} onClick={() => dispatch({ kind: 'buyMod', modId: def.id })}>
+              {t('hud.buy')}
+            </PanelButton>
+          </>
+        )}
       </div>
     </li>
   )

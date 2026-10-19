@@ -4,7 +4,7 @@ export type ResourceId = 'ore' | 'crystal' | 'alloy'
 export type MachineDefId = 'drill' | 'laserMiner' | 'refinery'
 export type StatName = 'rate' | 'efficiency' | 'durability'
 export type DepositResource = 'ore' | 'crystal'
-export type ModDefId = 'overclockedMotor' | 'precisionBit' | 'reinforcedCasing'
+export type ModDefId = 'overclockedMotor' | 'precisionBit' | 'reinforcedCasing' | 'catalystBed' | 'inductionCoils' | 'heatShielding'
 export type WorksOn = DepositResource | 'empty'
 
 export const SAVE_VERSION = 1
@@ -80,12 +80,17 @@ export interface ModDef {
   value: number
   price: number
   fits: readonly MachineDefId[]
+  /** The Unlock that must be earned before the Mod can be bought; none when it is available from a new game. */
+  requiresUnlock?: UnlockId
 }
 
 export const MOD_DEFS: Record<ModDefId, ModDef> = {
   overclockedMotor: { id: 'overclockedMotor', nameId: 'mod.overclockedMotor', stat: 'rate', kind: 'multiplier', value: 1.25, price: 80, fits: ['drill', 'laserMiner'] },
   precisionBit: { id: 'precisionBit', nameId: 'mod.precisionBit', stat: 'efficiency', kind: 'flat', value: 0.2, price: 60, fits: ['drill', 'laserMiner'] },
   reinforcedCasing: { id: 'reinforcedCasing', nameId: 'mod.reinforcedCasing', stat: 'durability', kind: 'multiplier', value: 1.3, price: 70, fits: ['drill', 'laserMiner'] },
+  catalystBed: { id: 'catalystBed', nameId: 'mod.catalystBed', stat: 'efficiency', kind: 'multiplier', value: 1.2, price: 150, fits: ['refinery'], requiresUnlock: 'refineryMods' },
+  inductionCoils: { id: 'inductionCoils', nameId: 'mod.inductionCoils', stat: 'rate', kind: 'flat', value: 0.1, price: 150, fits: ['refinery'], requiresUnlock: 'refineryMods' },
+  heatShielding: { id: 'heatShielding', nameId: 'mod.heatShielding', stat: 'durability', kind: 'multiplier', value: 1.3, price: 120, fits: ['refinery'], requiresUnlock: 'refineryMods' },
 }
 
 export type RecipeId = 'oreToAlloy' | 'oreCrystalToAlloy'
@@ -207,3 +212,62 @@ export const SHOP = {
 }
 
 export const STORAGE_TIER_MULTIPLIER = 2.5
+
+/** The highest Storage Tier. */
+export const MAX_STORAGE_TIER = 5
+
+/** The Credits a Storage Upgrade to each Storage Tier costs. */
+export const STORAGE_UPGRADE_COSTS: Readonly<Record<number, number>> = { 2: 100, 3: 400, 4: 1500, 5: 6000 }
+
+export type UnlockId =
+  | 'storageTier2'
+  | 'laserMiner'
+  | 'sellOrders'
+  | 'refineryMods'
+  | 'unlockedArea18'
+  | 'storageTier3'
+  | 'unlockedArea24'
+  | 'storageTier4'
+  | 'unlockedArea32'
+  | 'storageTier5'
+
+/** Which Lifetime Counter an Unlock reads. */
+export type LifetimeCounterRef =
+  | { kind: 'creditsEarned' }
+  | { kind: 'mined'; resource: DepositResource }
+  | { kind: 'refined' | 'sold'; resource: ResourceId }
+
+/** What earning an Unlock makes available. Features read their own kind. */
+export type UnlockEffect =
+  | { kind: 'machine'; machineDefId: MachineDefId }
+  | { kind: 'storageTier'; tier: number }
+  | { kind: 'unlockedArea'; size: number }
+  | { kind: 'sellOrders' }
+  | { kind: 'refineryMods' }
+
+export interface UnlockDef {
+  id: UnlockId
+  nameId: StringId
+  counter: LifetimeCounterRef
+  threshold: number
+  effect: UnlockEffect
+}
+
+/** The Unlocks, in the order the Unlocks panel lists them. */
+export const UNLOCK_DEFS: readonly UnlockDef[] = [
+  { id: 'storageTier2', nameId: 'unlock.storageTier', counter: { kind: 'mined', resource: 'ore' }, threshold: 300, effect: { kind: 'storageTier', tier: 2 } },
+  { id: 'laserMiner', nameId: 'unlock.laserMiner', counter: { kind: 'creditsEarned' }, threshold: 600, effect: { kind: 'machine', machineDefId: 'laserMiner' } },
+  { id: 'sellOrders', nameId: 'unlock.sellOrders', counter: { kind: 'creditsEarned' }, threshold: 1500, effect: { kind: 'sellOrders' } },
+  { id: 'refineryMods', nameId: 'unlock.refineryMods', counter: { kind: 'refined', resource: 'alloy' }, threshold: 100, effect: { kind: 'refineryMods' } },
+  { id: 'unlockedArea18', nameId: 'unlock.unlockedArea', counter: { kind: 'mined', resource: 'ore' }, threshold: 3000, effect: { kind: 'unlockedArea', size: 18 } },
+  { id: 'storageTier3', nameId: 'unlock.storageTier', counter: { kind: 'creditsEarned' }, threshold: 5000, effect: { kind: 'storageTier', tier: 3 } },
+  { id: 'unlockedArea24', nameId: 'unlock.unlockedArea', counter: { kind: 'mined', resource: 'crystal' }, threshold: 1000, effect: { kind: 'unlockedArea', size: 24 } },
+  { id: 'storageTier4', nameId: 'unlock.storageTier', counter: { kind: 'creditsEarned' }, threshold: 25000, effect: { kind: 'storageTier', tier: 4 } },
+  { id: 'unlockedArea32', nameId: 'unlock.unlockedArea', counter: { kind: 'creditsEarned' }, threshold: 60000, effect: { kind: 'unlockedArea', size: 32 } },
+  { id: 'storageTier5', nameId: 'unlock.storageTier', counter: { kind: 'creditsEarned' }, threshold: 150000, effect: { kind: 'storageTier', tier: 5 } },
+]
+
+/** The Unlock def with this id. */
+export function unlockDef(id: UnlockId): UnlockDef {
+  return UNLOCK_DEFS.find((def) => def.id === id)!
+}

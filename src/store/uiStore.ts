@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { UnlockId } from '../core/defs'
 import type { StringId } from '../core/strings'
 import type { Tile } from '../core/types'
 
@@ -8,20 +9,26 @@ export type InteractionMode = { kind: 'none' } | { kind: 'placing'; machineId: s
 
 const NOTICE_MS = 3500
 
+/** What a HUD notice tells the player: why a Player Action failed, or which Unlock was just earned. */
+export type NoticeContent = { kind: 'failure'; reason: StringId } | { kind: 'unlockEarned'; unlockId: UnlockId }
+
 interface UiState {
   hoveredTile: Tile | null
   setHoveredTile: (tile: Tile | null) => void
   selectedMachineId: string | null
   mode: InteractionMode
-  /** The HUD notice: a string id to show, with a counter so a repeat of the same reason still shows anew. */
-  notice: { reason: StringId; serial: number } | null
+  /** The HUD notice showing now, with a counter so a repeat of the same notice still shows anew. */
+  notice: (NoticeContent & { serial: number }) | null
   startPlacing: (machineId: string) => void
   /** Enter moving mode for a placed Machine; it stays selected. */
   startMoving: (machineId: string) => void
   select: (machineId: string | null) => void
   /** Escape: leave placing mode and clear the selection. */
   cancel: () => void
-  showNotice: (reason: StringId) => void
+  /** Shows a failure reason at once. An earned Unlock's notice it interrupts goes back to the front of the queue. */
+  showFailure: (reason: StringId) => void
+  /** Queues an earned Unlock's notice; queued notices show one after another, so none is lost. */
+  showUnlockEarned: (unlockId: UnlockId) => void
 }
 
 /** The id of the Machine being moved, or null. */
@@ -32,26 +39,44 @@ export const selectPlacingId = (s: UiState): string | null => (s.mode.kind === '
 
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
 let noticeSerial = 0
+/** Notices waiting for the one showing to end. */
+let waitingNotices: NoticeContent[] = []
 
 /** View state that is never saved. */
-export const useUiStore = create<UiState>((set, get) => ({
-  hoveredTile: null,
-  setHoveredTile: (tile) => {
-    const current = get().hoveredTile
-    if (current?.x === tile?.x && current?.y === tile?.y) return
-    set({ hoveredTile: tile })
-  },
-  selectedMachineId: null,
-  mode: { kind: 'none' },
-  notice: null,
-  startPlacing: (machineId) => set({ mode: { kind: 'placing', machineId }, selectedMachineId: null }),
-  startMoving: (machineId) => set({ mode: { kind: 'moving', machineId }, selectedMachineId: machineId }),
-  select: (machineId) => set({ selectedMachineId: machineId, mode: { kind: 'none' } }),
-  cancel: () => set({ mode: { kind: 'none' }, selectedMachineId: null }),
-  showNotice: (reason) => {
+export const useUiStore = create<UiState>((set, get) => {
+  const showNow = (content: NoticeContent): void => {
     if (noticeTimer !== null) clearTimeout(noticeTimer)
     noticeSerial += 1
-    set({ notice: { reason, serial: noticeSerial } })
-    noticeTimer = setTimeout(() => set({ notice: null }), NOTICE_MS)
-  },
-}))
+    set({ notice: { ...content, serial: noticeSerial } })
+    noticeTimer = setTimeout(() => {
+      noticeTimer = null
+      const next = waitingNotices.shift()
+      if (next) showNow(next)
+      else set({ notice: null })
+    }, NOTICE_MS)
+  }
+  return {
+    hoveredTile: null,
+    setHoveredTile: (tile) => {
+      const current = get().hoveredTile
+      if (current?.x === tile?.x && current?.y === tile?.y) return
+      set({ hoveredTile: tile })
+    },
+    selectedMachineId: null,
+    mode: { kind: 'none' },
+    notice: null,
+    startPlacing: (machineId) => set({ mode: { kind: 'placing', machineId }, selectedMachineId: null }),
+    startMoving: (machineId) => set({ mode: { kind: 'moving', machineId }, selectedMachineId: machineId }),
+    select: (machineId) => set({ selectedMachineId: machineId, mode: { kind: 'none' } }),
+    cancel: () => set({ mode: { kind: 'none' }, selectedMachineId: null }),
+    showFailure: (reason) => {
+      const current = get().notice
+      if (current?.kind === 'unlockEarned') waitingNotices = [{ kind: 'unlockEarned', unlockId: current.unlockId }, ...waitingNotices]
+      showNow({ kind: 'failure', reason })
+    },
+    showUnlockEarned: (unlockId) => {
+      if (get().notice === null) showNow({ kind: 'unlockEarned', unlockId })
+      else waitingNotices = [...waitingNotices, { kind: 'unlockEarned', unlockId }]
+    },
+  }
+})

@@ -9,6 +9,7 @@ import {
 import type { BufferGeometry, Material, Object3D } from 'three'
 import type { MachineDefId } from '../core/defs'
 import type { Tile } from '../core/types'
+import { LaserMinerModel } from './laserMinerModel'
 import { scenePalette } from './palette'
 import type { PaletteKey } from './palette'
 
@@ -24,6 +25,8 @@ export interface InstancedModel {
 
 export interface MachineModelProps {
   defId: MachineDefId
+  /** The placed Machine drawn, for models whose look follows its Machine Status; absent for the placement preview. */
+  machineId?: string
   /** Drawn translucent, as the placement preview. */
   ghost?: boolean
   /** The pointer is over the Machine: its glow brightens. */
@@ -112,7 +115,7 @@ function ProceduralMachine({ defId, ghost, hovered }: MachineModelProps) {
 
 const MACHINE_MODELS: Record<MachineDefId, ComponentType<MachineModelProps>> = {
   drill: ProceduralMachine,
-  laserMiner: ProceduralMachine,
+  laserMiner: LaserMinerModel,
   refinery: ProceduralMachine,
 }
 

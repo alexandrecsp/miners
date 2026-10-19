@@ -17,6 +17,7 @@ const TOKENS = {
   drillGlow: '--color-scene-drill-glow',
   laserMiner: '--color-scene-laser-miner',
   laserMinerGlow: '--color-scene-laser-miner-glow',
+  laserBeamCore: '--color-scene-laser-beam-core',
   refinery: '--color-scene-refinery',
   refineryGlow: '--color-scene-refinery-glow',
   statusWorking: '--color-scene-status-working',

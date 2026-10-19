@@ -66,7 +66,7 @@ function PlacedMachine({ machine, gridSize }: { machine: Machine; gridSize: numb
     <group position={[x, 0, z]}>
       <BrokenTilt machineId={machine.id}>
         <Select enabled={selected}>
-          <Model defId={machine.defId} hovered={hovered} />
+          <Model defId={machine.defId} machineId={machine.id} hovered={hovered} />
         </Select>
       </BrokenTilt>
       <StatusLight machineId={machine.id} />

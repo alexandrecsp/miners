@@ -21,7 +21,7 @@ export function runTicks(ticks: number): void {
 export function dispatch(action: PlayerAction): boolean {
   const result = applyAction(useGameStore.getState().game, action)
   if (!result.ok) {
-    useUiStore.getState().showNotice(result.reason)
+    useUiStore.getState().showFailure(result.reason)
     return false
   }
   useGameStore.setState({ game: result.value })

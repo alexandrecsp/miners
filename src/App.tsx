@@ -4,7 +4,10 @@ import { MarketPanel } from './hud/MarketPanel'
 import { ModsPanel } from './hud/ModsPanel'
 import { Notice } from './hud/Notice'
 import { ShopPanel } from './hud/ShopPanel'
+import { StoragePanel } from './hud/StoragePanel'
 import { TopBar } from './hud/TopBar'
+import { UnlocksPanel } from './hud/UnlocksPanel'
+import { UnlockWatcher } from './hud/UnlockWatcher'
 import { GameCanvas } from './scene/GameCanvas'
 
 export function App() {
@@ -16,6 +19,9 @@ export function App() {
       <MarketPanel />
       <ShopPanel />
       <ModsPanel />
+      <StoragePanel />
+      <UnlocksPanel />
+      <UnlockWatcher />
       <MachineInspector />
       <Notice />
     </main>

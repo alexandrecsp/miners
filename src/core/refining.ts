@@ -1,5 +1,6 @@
 import type { Draft } from 'immer'
 import { outputFactor, recipeInputs } from './defs'
+import { addRefined } from './lifetime'
 import { effectiveStats, placedMachinesInIdOrder, recipeOf, refineBatchLimit } from './queries'
 import type { Rng } from './rng'
 import type { StepContext } from './stepContext'
@@ -21,6 +22,6 @@ export function refining(draft: Draft<GameState>, dt: number, _rng: Rng, ctx: St
     for (const [resource, perBatch] of recipeInputs(recipe)) {
       draft.storage[resource].amount -= batches * perBatch
     }
-    draft.storage[recipe.output].amount += batches * recipe.outputAmount * stats.efficiency
+    addRefined(draft, recipe.output, batches * recipe.outputAmount * stats.efficiency)
   }
 }
