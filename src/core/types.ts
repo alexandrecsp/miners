@@ -47,6 +47,12 @@ export interface LifetimeCounters {
   sold: Record<ResourceId, number>
 }
 
+/** A standing rule on one Resource: sell while the Market Price is at or above `minPrice`, keeping `reserve` in Storage. */
+export interface SellOrder {
+  minPrice: number
+  reserve: number
+}
+
 export interface GameState {
   saveVersion: number
   lastSeen: number
@@ -68,6 +74,8 @@ export interface GameState {
   machines: Machine[]
   modInventory: Record<string, number>
   market: Record<ResourceId, number>
+  /** Per Resource, its Sell Order, or null when it has none. */
+  sellOrders: Record<ResourceId, SellOrder | null>
   shop: {
     offers: Offer[]
     /** Sim-clock time of the next timed Shop Refresh. */

@@ -1,9 +1,9 @@
 import { produce } from 'immer'
 import { MAX_CONDITION, MOD_DEFS, SHOP } from './defs'
 import type { ModDefId, RecipeId, ResourceId } from './defs'
-import { checkBuyMod, checkBuyOffer, checkFitMod, checkMove, checkPlacement, checkRemoveMod, checkRepair, checkSale, checkSetRecipe, checkShopRefresh, checkStorageUpgrade, saleOutcome } from './queries'
+import { checkBuyMod, checkBuyOffer, checkFitMod, checkMove, checkPlacement, checkRemoveMod, checkRepair, checkSale, checkSetRecipe, checkSetSellOrder, checkShopRefresh, checkStorageUpgrade } from './queries'
 import { stateRng } from './rng'
-import { addSale } from './lifetime'
+import { applySale } from './market'
 import { nextId } from './ids'
 import { fillShop } from './shop'
 import { ok } from './result'
@@ -24,6 +24,8 @@ export type PlayerAction =
   | { kind: 'fitMod'; machineId: string; modId: ModDefId }
   | { kind: 'removeMod'; machineId: string; slot: number }
   | { kind: 'buyStorageUpgrade'; resource: ResourceId }
+  | { kind: 'setSellOrder'; resource: ResourceId; minPrice: number; reserve: number }
+  | { kind: 'clearSellOrder'; resource: ResourceId }
 
 /** Apply a Player Action: the next Game State, or a failure reason with the state untouched. */
 export function applyAction(state: GameState, action: PlayerAction): Result<GameState> {
@@ -51,11 +53,9 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
       const { resource, amount } = action
       const check = checkSale(state, resource, amount)
       if (!check.ok) return check
-      const { credits, price } = saleOutcome(state, resource, amount)
       return ok(
         produce(state, (draft) => {
-          addSale(draft, resource, amount, credits)
-          draft.market[resource] = price
+          applySale(draft, resource, amount)
         }),
       )
     }
@@ -141,5 +141,21 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
         }),
       )
     }
+    case 'setSellOrder': {
+      const order = { minPrice: action.minPrice, reserve: action.reserve }
+      const check = checkSetSellOrder(state, order)
+      if (!check.ok) return check
+      return ok(
+        produce(state, (draft) => {
+          draft.sellOrders[action.resource] = order
+        }),
+      )
+    }
+    case 'clearSellOrder':
+      return ok(
+        produce(state, (draft) => {
+          draft.sellOrders[action.resource] = null
+        }),
+      )
   }
 }

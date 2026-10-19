@@ -77,6 +77,9 @@ const STRINGS = {
   'fail.noSuchModSlot': 'This Machine has no such Mod Slot.',
   'fail.modLocked': 'That Mod is not unlocked yet.',
   'fail.storageTierLocked': 'That Storage Tier is not unlocked yet.',
+  'fail.sellOrdersLocked': 'Sell Orders are not unlocked yet.',
+  'fail.invalidMinPrice': 'Enter a minimum price above zero.',
+  'fail.invalidReserve': 'Enter a Reserve of zero or more.',
   'fail.maxStorageTier': 'Storage is already at the highest Storage Tier.',
   'hud.remove': 'Remove',
   'hud.mods': 'Mods',
@@ -94,6 +97,13 @@ const STRINGS = {
   'hud.storageUpgrade': 'Storage Upgrade',
   'hud.needsUnlock': 'Needs',
   'hud.storageMaxTier': 'Highest Storage Tier',
+  'hud.sellOrders': 'Sell Orders',
+  'hud.minPrice': 'Min price',
+  'hud.reserve': 'Reserve',
+  'hud.sellOrderTerms': 'Min price {minPrice} · Reserve {reserve}',
+  'hud.noSellOrder': 'No Sell Order',
+  'hud.setSellOrder': 'Set',
+  'hud.clearSellOrder': 'Clear',
   'unlock.storageTier': 'Storage Tier',
   'unlock.laserMiner': 'Laser Miner',
   'unlock.sellOrders': 'Sell Orders',
@@ -105,4 +115,9 @@ export type StringId = keyof typeof STRINGS
 
 export function t(id: StringId): string {
   return STRINGS[id]
+}
+
+/** A template string with each `{name}` replaced by its value, so word order and separators stay in the string table. */
+export function tf(id: StringId, values: Record<string, string>): string {
+  return STRINGS[id].replace(/\{(\w+)\}/g, (match, name: string) => values[name] ?? match)
 }

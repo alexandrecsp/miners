@@ -2,6 +2,7 @@ import { MachineInspector } from './hud/MachineInspector'
 import { MachineInventory } from './hud/MachineInventory'
 import { MarketPanel } from './hud/MarketPanel'
 import { ModsPanel } from './hud/ModsPanel'
+import { SellOrdersPanel } from './hud/SellOrdersPanel'
 import { Notice } from './hud/Notice'
 import { ShopPanel } from './hud/ShopPanel'
 import { StoragePanel } from './hud/StoragePanel'
@@ -20,6 +21,7 @@ export function App() {
       <ShopPanel />
       <ModsPanel />
       <StoragePanel />
+      <SellOrdersPanel />
       <UnlocksPanel />
       <UnlockWatcher />
       <MachineInspector />

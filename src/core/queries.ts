@@ -5,7 +5,7 @@ import { fail, ok } from './result'
 import type { Result } from './result'
 import { effectiveStat } from './stats'
 import { sameTile } from './tile'
-import type { Deposit, GameState, GridShape, LifetimeCounters, Machine, Offer, Tile } from './types'
+import type { Deposit, GameState, GridShape, LifetimeCounters, Machine, Offer, SellOrder, Tile } from './types'
 
 /** The part of the Game State the Placement check reads. */
 export type PlacementView = Pick<GameState, 'machines' | 'grid'>
@@ -206,6 +206,18 @@ export function saleOutcome(
   return saleOutcomeAt(state.market[resource], resource, amount)
 }
 
+/** The largest amount whose Sale keeps the Market Price at or above `minPrice`: D x ln(p/P), or 0 when the price is already below it. */
+function priceLimitedAmount(price: number, resource: ResourceId, minPrice: number): number {
+  if (price < minPrice) return 0
+  return RESOURCE_DEFS[resource].marketDepth * Math.log(price / minPrice)
+}
+
+/** What a Sell Order sells now: the amount above its Reserve, limited by its minimum price; 0 when nothing. */
+export function sellOrderAmount(state: Pick<GameState, 'storage' | 'market'>, resource: ResourceId, order: SellOrder): number {
+  const aboveReserve = state.storage[resource].amount - order.reserve
+  return Math.max(0, Math.min(aboveReserve, priceLimitedAmount(state.market[resource], resource, order.minPrice)))
+}
+
 /** Whether `amount` may be sold from `stored` units: the one check the Sell action and the Market panel share. */
 export function checkSaleAmount(stored: number, amount: number): Result<null> {
   if (!(amount > 0)) return fail('fail.invalidAmount')
@@ -375,4 +387,12 @@ export function checkStorageUpgrade(state: Pick<GameState, 'storage' | 'unlocks'
   if (!upgrade.unlocked) return fail('fail.storageTierLocked')
   if (state.credits < upgrade.cost) return fail('fail.notEnoughCredits')
   return ok(upgrade)
+}
+
+/** Whether a Sell Order may be set: the one check the Set Sell Order action and the Sell Orders panel share. */
+export function checkSetSellOrder(state: Pick<GameState, 'unlocks'>, order: SellOrder): Result<null> {
+  if (!isUnlocked(state, 'sellOrders')) return fail('fail.sellOrdersLocked')
+  if (!(order.minPrice > 0) || !Number.isFinite(order.minPrice)) return fail('fail.invalidMinPrice')
+  if (!(order.reserve >= 0) || !Number.isFinite(order.reserve)) return fail('fail.invalidReserve')
+  return ok(null)
 }

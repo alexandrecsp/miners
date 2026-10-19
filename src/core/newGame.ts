@@ -53,6 +53,7 @@ export function newGame(seed: number): GameState {
     machines: [],
     modInventory: {},
     market: fillRecord((r) => RESOURCE_DEFS[r].basePrice),
+    sellOrders: fillRecord(() => null),
     shop: { offers: [], nextRefresh: SHOP.interval },
   }
   const rng = stateRng(state)
