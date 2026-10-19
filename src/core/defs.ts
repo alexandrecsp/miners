@@ -202,6 +202,15 @@ export const PACING = {
   gapThreshold: 1,
 }
 
+export const OFFLINE = {
+  /** The most real seconds one Offline Replay advances. */
+  cap: 8 * 3600,
+  /** The Step length of Offline Replay, in seconds. */
+  stepLength: 5,
+  /** The shortest replayed time, in seconds, that shows an Away Summary. */
+  summaryMinSeconds: 60,
+}
+
 export const SHOP = {
   offers: 4,
   /** Sim seconds between timed Shop Refreshes. */

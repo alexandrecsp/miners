@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNumber } from './format'
+import { formatNumber, formatDuration } from './format'
 
 describe('formatNumber', () => {
   it('formats values below 1,000 as whole numbers', () => {
@@ -45,5 +45,14 @@ describe('formatNumber', () => {
   it('formats stats with two decimals', () => {
     expect(formatNumber(1.05, { stat: true })).toBe('1.05')
     expect(formatNumber(0.8, { stat: true })).toBe('0.80')
+  })
+})
+
+describe('formatDuration', () => {
+  it('splits seconds into whole hours and the whole minutes left over, both formatted', () => {
+    expect(formatDuration(2 * 3600 + 35 * 60 + 59)).toEqual({ hours: '2', minutes: '35' })
+  })
+  it('shows less than a minute as zero hours and zero minutes', () => {
+    expect(formatDuration(59)).toEqual({ hours: '0', minutes: '0' })
   })
 })

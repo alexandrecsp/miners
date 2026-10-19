@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { OFFLINE } from '../core/defs'
 import type { UnlockId } from '../core/defs'
+import type { AwaySummary } from '../core/offline'
 import type { StringId } from '../core/strings'
 import type { Tile } from '../core/types'
 
@@ -29,6 +31,11 @@ interface UiState {
   showFailure: (reason: StringId) => void
   /** Queues an earned Unlock's notice; queued notices show one after another, so none is lost. */
   showUnlockEarned: (unlockId: UnlockId) => void
+  /** The Away Summary dialog to show, or null. */
+  awaySummary: AwaySummary | null
+  /** Shows an Away Summary when its replayed time is at least the minimum; a newer one replaces one not yet dismissed. */
+  showAwaySummary: (summary: AwaySummary) => void
+  dismissAwaySummary: () => void
 }
 
 /** The id of the Machine being moved, or null. */
@@ -78,5 +85,10 @@ export const useUiStore = create<UiState>((set, get) => {
       if (get().notice === null) showNow({ kind: 'unlockEarned', unlockId })
       else waitingNotices = [...waitingNotices, { kind: 'unlockEarned', unlockId }]
     },
+    awaySummary: null,
+    showAwaySummary: (summary) => {
+      if (summary.seconds >= OFFLINE.summaryMinSeconds) set({ awaySummary: summary })
+    },
+    dismissAwaySummary: () => set({ awaySummary: null }),
   }
 })

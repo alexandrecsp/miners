@@ -36,3 +36,14 @@ export function formatNumber(value: number, options: FormatOptions = {}): string
   }
   return `${sign}${scaled.toFixed(1)}${SUFFIXES[tier]}`
 }
+
+const SECONDS_PER_MINUTE = 60
+const SECONDS_PER_HOUR = 3600
+
+/** A length of real time in seconds as whole hours and the whole minutes left over, each formatted, for a string-table template. */
+export function formatDuration(seconds: number): { hours: string; minutes: string } {
+  return {
+    hours: formatNumber(Math.floor(seconds / SECONDS_PER_HOUR)),
+    minutes: formatNumber(Math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)),
+  }
+}

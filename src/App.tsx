@@ -1,3 +1,4 @@
+import { AwaySummaryDialog } from './hud/AwaySummaryDialog'
 import { MachineInspector } from './hud/MachineInspector'
 import { MachineInventory } from './hud/MachineInventory'
 import { MarketPanel } from './hud/MarketPanel'
@@ -26,6 +27,7 @@ export function App() {
       <UnlockWatcher />
       <MachineInspector />
       <Notice />
+      <AwaySummaryDialog />
     </main>
   )
 }

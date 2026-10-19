@@ -1,6 +1,6 @@
 import { PACING } from '../core/defs'
 import { pace } from '../core/pacing'
-import { runTicks } from './gameStore'
+import { replayAway, runTicks } from './gameStore'
 
 const INTERVAL_MS = PACING.tick * 1000
 
@@ -9,18 +9,23 @@ export function startSimLoop(): () => void {
   let timer: ReturnType<typeof setInterval> | null = null
   let last = 0
   let accumulator = 0
+  /** Real time (ms) of the last Tick, from the clock that keeps counting while the device sleeps; boot replayed up to now. */
+  let lastTickAt = Date.now()
 
   const tick = () => {
     const now = performance.now()
     const result = pace(accumulator, (now - last) / 1000)
     last = now
+    lastTickAt = Date.now()
     accumulator = result.accumulator
-    // A returned gap is dropped until Offline Replay exists (T024).
+    if (result.gap !== null) replayAway(result.gap)
     if (result.ticks > 0) runTicks(result.ticks)
   }
   const start = () => {
     if (timer !== null) return
-    // Resetting `last` drops the hidden time; T024 will hand it to Offline Replay instead.
+    // On return to a visible page, the time since the last Tick goes to Offline Replay.
+    replayAway((Date.now() - lastTickAt) / 1000)
+    lastTickAt = Date.now()
     last = performance.now()
     timer = setInterval(tick, INTERVAL_MS)
   }
