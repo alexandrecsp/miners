@@ -23,7 +23,7 @@ Rules the Standards reviewer checks each diff against. Import restrictions on th
 ## State and rendering
 
 - The Game State changes only through the Game Store's `dispatch`, the Sim Loop, the boot sequence and the dev cheats; components never write it directly.
-- View-only state (selection, hover, interaction mode, open panels) lives in the UI Store, never in the Game State.
+- View-only state (selection, hover, interaction mode, open panels) lives in the UI Store, never in the Game State. The Look store (`src/scene/lookStore.ts`) is the exception: it holds dev-tuned rendering settings for the Scene, not player view state.
 - Code inside `useFrame` reads stores through `getState()` and never calls a store setter or a React state setter.
 - HUD components subscribe to the narrowest selector that serves them; a component never subscribes to the whole Game State.
 - Tiles, Rocks and Deposits are drawn with InstancedMesh; never one mesh per item.

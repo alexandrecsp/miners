@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+@import '@fontsource/orbitron/600.css';
+@import '@fontsource/inter/400.css';
+
+@theme static {
+  --color-void: #05070d;
+  --color-panel: #0d1424;
+  --color-edge: #1c2b4a;
+  --color-ore: #e8a33d;
+  --color-crystal: #5ee6ff;
+  --color-alloy: #b6c2d9;
+  --color-accent: #3df5c4;
+  --color-ink: #d6e2ff;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --color-scene-fog: #05070d;
+  --color-scene-light-sky: #7aa7ff;
+  --color-scene-light-warm: #ff9a5c;
+  --color-scene-light-cyan: #5ee6ff;
+  --color-scene-key: #cfe0ff;
+  --color-scene-highlight: #3df5c4;
+  --color-scene-tile: #26334f;
+  --color-scene-unlocked-tint: #ffffff;
+  --color-scene-locked-dim: #6a6a6a;
+  --color-scene-rock: #3b4252;
+  --color-scene-ore: #b9772a;
+  --color-scene-ore-glow: #6b3a08;
+  --color-scene-crystal: #37d6ff;
+  --color-scene-crystal-glow: #18c8ff;
+  --color-scene-drill: #8a94a8;
+  --color-scene-drill-glow: #e8a33d;
+  --color-scene-laser-miner: #6c7a96;
+  --color-scene-laser-miner-glow: #5ee6ff;
+  --color-scene-laser-beam-core: #e6fcff;
+  --color-scene-refinery: #7d8798;
+  --color-scene-refinery-glow: #ff7a3d;
+  --color-scene-status-working: #4dff9a;
+  --color-scene-status-idle: #ffc640;
+  --color-scene-status-broken: #ff3d4d;
+  --color-danger: #ff3d4d;
+  --shadow-glow: 0 0 12px 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+body {
+  margin: 0;
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
