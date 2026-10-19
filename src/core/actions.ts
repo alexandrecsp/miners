@@ -2,10 +2,9 @@ import { produce } from 'immer'
 import { MAX_CONDITION, MOD_DEFS, SHOP } from './defs'
 import type { ModDefId, RecipeId, ResourceId } from './defs'
 import { checkBuyMod, checkBuyOffer, checkFitMod, checkMove, checkPlacement, checkRemoveMod, checkRepair, checkSale, checkSetRecipe, checkSetSellOrder, checkShopRefresh, checkStorageUpgrade } from './queries'
-import { stateRng } from './rng'
 import { applySale } from './market'
 import { nextId } from './ids'
-import { fillShop } from './shop'
+import { refillShop } from './shop'
 import { ok } from './result'
 import type { Result } from './result'
 import type { GameState, Tile } from './types'
@@ -78,7 +77,7 @@ export function applyAction(state: GameState, action: PlayerAction): Result<Game
       return ok(
         produce(state, (draft) => {
           draft.credits -= SHOP.refreshCost
-          fillShop(draft, stateRng(draft))
+          refillShop(draft)
         }),
       )
     }

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { AwaySummaryDialog } from './hud/AwaySummaryDialog'
 import { MachineInspector } from './hud/MachineInspector'
 import { MachineInventory } from './hud/MachineInventory'
@@ -11,6 +12,9 @@ import { TopBar } from './hud/TopBar'
 import { UnlocksPanel } from './hud/UnlocksPanel'
 import { UnlockWatcher } from './hud/UnlockWatcher'
 import { GameCanvas } from './scene/GameCanvas'
+
+/** Dev Tools exist only in development: the dynamic import sits behind the flag, so a production build drops it and leva. */
+const DevTools = import.meta.env.DEV ? lazy(() => import('./dev/DevTools')) : null
 
 export function App() {
   return (
@@ -28,6 +32,11 @@ export function App() {
       <MachineInspector />
       <Notice />
       <AwaySummaryDialog />
+      {DevTools && (
+        <Suspense fallback={null}>
+          <DevTools />
+        </Suspense>
+      )}
     </main>
   )
 }

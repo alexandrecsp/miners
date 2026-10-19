@@ -3,6 +3,7 @@ import { DEFAULT_RECIPE, isMiner, MACHINE_DEFS, SHOP, STARTING_CONDITION, STAT_N
 import type { MachineDefId, StatName } from './defs'
 import { nextId } from './ids'
 import { earnedUnlocks, offerPrice, rollQuality } from './queries'
+import { stateRng } from './rng'
 import type { Rng } from './rng'
 import type { GameState, Machine, Offer } from './types'
 
@@ -45,6 +46,11 @@ export function fillShop(draft: Draft<GameState>, rng: Rng): void {
     const machine = rollMachine(rng, defId, nextId(draft, 'm'))
     return { machine, price: offerPrice(defId, rollQuality(machine)) }
   })
+}
+
+/** Replaces the Shop Stock using the Game State's own random stream; the refill behind every manual Shop Refresh. */
+export function refillShop(draft: Draft<GameState>): void {
+  fillShop(draft, stateRng(draft))
 }
 
 /** Shop timer system: when the sim clock passes the next timed Shop Refresh, replaces the Stock and schedules the next. */

@@ -8,24 +8,27 @@ import { PlacementPreview } from './PlacementPreview'
 import { TileHighlight } from './TileHighlight'
 import { TilePicker } from './TilePicker'
 import { scenePalette } from './palette'
+import { useLookStore } from './lookStore'
 import { Zone } from './Zone'
 
 function Lighting() {
+  const look = useLookStore()
   return (
     <>
-      <Environment resolution={256}>
+      <Environment resolution={256} environmentIntensity={look.environmentIntensity}>
         <Lightformer form="rect" intensity={1.2} color={scenePalette('lightSky')} position={[0, 6, -6]} scale={[14, 4, 1]} />
         <Lightformer form="rect" intensity={0.8} color={scenePalette('lightWarm')} position={[-8, 3, 4]} rotation-y={Math.PI / 2} scale={[10, 3, 1]} />
         <Lightformer form="ring" intensity={0.6} color={scenePalette('lightCyan')} position={[6, 8, 6]} scale={6} />
       </Environment>
-      <directionalLight position={[-20, 40, 15]} intensity={1.6} color={scenePalette('key')} />
-      <fog attach="fog" args={[scenePalette('fog'), 110, 190]} />
+      <directionalLight position={[-20, 40, 15]} intensity={look.keyIntensity} color={scenePalette('key')} />
+      <fog attach="fog" args={[scenePalette('fog'), look.fogNear, look.fogFar]} />
     </>
   )
 }
 
 /** The R3F canvas: an isometric orthographic view of the Zone under sci-fi lighting. */
 export function GameCanvas() {
+  const { bloomIntensity, bloomThreshold } = useLookStore()
   return (
     <Canvas
       orthographic
@@ -43,7 +46,7 @@ export function GameCanvas() {
       <ClickHandler />
       <CameraRig />
       <EffectComposer>
-        <Bloom intensity={0.9} luminanceThreshold={0.8} luminanceSmoothing={0.2} mipmapBlur />
+        <Bloom intensity={bloomIntensity} luminanceThreshold={bloomThreshold} luminanceSmoothing={0.2} mipmapBlur />
         <Vignette eskil={false} offset={0.2} darkness={0.7} />
         <Outline blur edgeStrength={6} visibleEdgeColor={scenePalette('highlight')} hiddenEdgeColor={scenePalette('highlight')} />
       </EffectComposer>

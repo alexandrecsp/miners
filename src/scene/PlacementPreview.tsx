@@ -37,19 +37,24 @@ function AcceptingTiles({ tiles, size }: { tiles: Tile[]; size: number }) {
   )
 }
 
-/** While placing or moving: highlights exactly the accepting Tiles and shows a ghost Machine on the hovered Tile; for a Move, its cost too. */
+/** While placing or moving: highlights exactly the accepting Tiles and shows a ghost Machine on the hovered Tile; for a Move, its cost too. Subscribes to the Game State only while placing or moving, so a Tick does not re-render it otherwise. */
 export function PlacementPreview() {
   const placingId = useUiStore(selectPlacingId)
   const movingId = useUiStore(selectMovingId)
   const machineId = placingId ?? movingId
+  return machineId ? <ActivePreview machineId={machineId} moving={movingId !== null} /> : null
+}
+
+function ActivePreview({ machineId, moving }: { machineId: string; moving: boolean }) {
+  const movingId = moving ? machineId : null
   const hovered = useUiStore((s) => s.hoveredTile)
   const machines = useGameStore((s) => s.game.machines)
   const grid = useGameStore((s) => s.game.grid)
   const tiles = useMemo(() => (
-    !machineId ? [] : movingId ? moveTiles({ machines, grid }, machineId) : placementTiles({ machines, grid }, machineId)
+    movingId ? moveTiles({ machines, grid }, machineId) : placementTiles({ machines, grid }, machineId)
   ), [machines, grid, machineId, movingId])
-  const machine = machineId ? machines.find((m) => m.id === machineId) : undefined
-  if (!machineId || !machine) return null
+  const machine = machines.find((m) => m.id === machineId)
+  if (!machine) return null
   const size = grid.size
   const Model = getMachineModel(machine.defId)
   // The cost is a Query; Credits are not considered here so it shows even when the Move is unaffordable.

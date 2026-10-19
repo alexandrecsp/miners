@@ -12,6 +12,7 @@ import type { Tile } from '../core/types'
 import { LaserMinerModel } from './laserMinerModel'
 import { scenePalette } from './palette'
 import type { PaletteKey } from './palette'
+import { sharedBodyMaterial, sharedBox, sharedStandard } from './machineResources'
 
 export type InstancedKind = 'tile' | 'rock' | 'ore' | 'crystal'
 
@@ -101,14 +102,16 @@ function ProceduralMachine({ defId, ghost, hovered }: MachineModelProps) {
   const glow = scenePalette(MACHINE_COLORS[defId].glow)
   return (
     <group>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshStandardMaterial color={body} metalness={0.8} roughness={0.35} emissive={body} emissiveIntensity={hovered ? 0.5 : 0} transparent={ghost} opacity={ghost ? 0.5 : 1} />
-      </mesh>
-      <mesh position={[0, 0.68, 0]}>
-        <boxGeometry args={[0.24, 0.16, 0.24]} />
-        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={hovered ? 5 : 2} transparent={ghost} opacity={ghost ? 0.5 : 1} />
-      </mesh>
+      <mesh
+        position={[0, 0.3, 0]}
+        geometry={sharedBox(0.6, 0.6, 0.6)}
+        material={sharedBodyMaterial(body, hovered, ghost)}
+      />
+      <mesh
+        position={[0, 0.68, 0]}
+        geometry={sharedBox(0.24, 0.16, 0.24)}
+        material={sharedStandard({ color: glow, emissive: glow, emissiveIntensity: hovered ? 5 : 2, ghost })}
+      />
     </group>
   )
 }

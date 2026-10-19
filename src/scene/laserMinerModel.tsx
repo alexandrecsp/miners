@@ -1,10 +1,11 @@
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { AdditiveBlending, Color, ShaderMaterial } from 'three'
 import type { Group } from 'three'
 import { machineStatus } from '../core/queries'
 import { useGameStore } from '../store/gameStore'
 import { scenePalette } from './palette'
+import { shared, sharedBodyMaterial, sharedBox, sharedCylinder, sharedSphere, sharedStandard } from './machineResources'
 
 /** Height of the emitter's lens above the Tile; the beam runs from there down into the Deposit. */
 const EMITTER_Y = 0.86
@@ -51,30 +52,23 @@ const BEAM_FRAGMENT = /* glsl */ `
   }
 `
 
-function useBeamMaterial(): ShaderMaterial {
-  return useMemo(
-    () =>
-      new ShaderMaterial({
-        uniforms: {
-          uTime: { value: 0 },
-          uColor: { value: new Color(scenePalette('laserMinerGlow')) },
-          uCore: { value: new Color(scenePalette('laserBeamCore')) },
-        },
-        vertexShader: BEAM_VERTEX,
-        fragmentShader: BEAM_FRAGMENT,
-        transparent: true,
-        depthWrite: false,
-        blending: AdditiveBlending,
-        toneMapped: false,
-      }),
-    [],
-  )
+/** The beam's shader material, shared by every Laser Miner; uTime is written by whichever beam is showing. */
+function sharedBeamMaterial(): ShaderMaterial {
+  return shared('beam', () => new ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new Color(scenePalette('laserMinerGlow')) }, uCore: { value: new Color(scenePalette('laserBeamCore')) } },
+    vertexShader: BEAM_VERTEX,
+    fragmentShader: BEAM_FRAGMENT,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  }))
 }
 
 /** The beam and its impact glow, shown only while the Machine Status is Working, read each frame through getState(). */
 function LaserBeam({ machineId }: { machineId: string }) {
   const group = useRef<Group>(null)
-  const material = useBeamMaterial()
+  const material = sharedBeamMaterial()
   const glow = scenePalette('laserMinerGlow')
   useFrame(({ clock }) => {
     const g = group.current
@@ -88,13 +82,12 @@ function LaserBeam({ machineId }: { machineId: string }) {
   })
   return (
     <group ref={group} visible={false}>
-      <mesh position={[0, IMPACT_Y + BEAM_LENGTH / 2, 0]} material={material}>
-        <cylinderGeometry args={[BEAM_RADIUS, BEAM_RADIUS * 1.6, BEAM_LENGTH, 16, 1, true]} />
-      </mesh>
-      <mesh position={[0, IMPACT_Y, 0]}>
-        <sphereGeometry args={[0.11, 16, 12]} />
-        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={6} toneMapped={false} />
-      </mesh>
+      <mesh
+        position={[0, IMPACT_Y + BEAM_LENGTH / 2, 0]}
+        material={material}
+        geometry={sharedCylinder(BEAM_RADIUS, BEAM_RADIUS * 1.6, BEAM_LENGTH, 16, 1, true)}
+      />
+      <mesh position={[0, IMPACT_Y, 0]} geometry={sharedSphere(0.11, 16, 12)} material={sharedStandard({ color: glow, emissive: glow, emissiveIntensity: 6, toneMapped: false })} />
     </group>
   )
 }
@@ -110,27 +103,17 @@ export interface LaserMinerModelProps {
 export function LaserMinerModel({ machineId, ghost, hovered }: LaserMinerModelProps) {
   const body = scenePalette('laserMiner')
   const glow = scenePalette('laserMinerGlow')
-  const fade = { transparent: ghost, opacity: ghost ? 0.5 : 1 }
+  const bodyMaterial = sharedBodyMaterial(body, hovered, ghost)
+  const headMaterial = sharedStandard({ color: body, metalness: 0.9, roughness: 0.25, ghost })
+  const lensMaterial = sharedStandard({ color: glow, emissive: glow, emissiveIntensity: hovered ? 5 : 3, ghost })
   return (
     <group>
       {LEGS.map(([x, z]) => (
-        <mesh key={`${x},${z}`} position={[x, 0.45, z]}>
-          <boxGeometry args={[0.08, 0.9, 0.08]} />
-          <meshStandardMaterial color={body} metalness={0.8} roughness={0.35} emissive={body} emissiveIntensity={hovered ? 0.5 : 0} {...fade} />
-        </mesh>
+        <mesh key={`${x},${z}`} position={[x, 0.45, z]} geometry={sharedBox(0.08, 0.9, 0.08)} material={bodyMaterial} />
       ))}
-      <mesh position={[0, 0.94, 0]}>
-        <boxGeometry args={[0.7, 0.1, 0.7]} />
-        <meshStandardMaterial color={body} metalness={0.8} roughness={0.35} emissive={body} emissiveIntensity={hovered ? 0.5 : 0} {...fade} />
-      </mesh>
-      <mesh position={[0, 1.12, 0]}>
-        <cylinderGeometry args={[0.16, 0.2, 0.22, 12]} />
-        <meshStandardMaterial color={body} metalness={0.9} roughness={0.25} {...fade} />
-      </mesh>
-      <mesh position={[0, EMITTER_Y + 0.02, 0]}>
-        <cylinderGeometry args={[0.07, 0.11, 0.08, 12]} />
-        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={hovered ? 5 : 3} {...fade} />
-      </mesh>
+      <mesh position={[0, 0.94, 0]} geometry={sharedBox(0.7, 0.1, 0.7)} material={bodyMaterial} />
+      <mesh position={[0, 1.12, 0]} geometry={sharedCylinder(0.16, 0.2, 0.22, 12)} material={headMaterial} />
+      <mesh position={[0, EMITTER_Y + 0.02, 0]} geometry={sharedCylinder(0.07, 0.11, 0.08, 12)} material={lensMaterial} />
       {machineId && !ghost ? <LaserBeam machineId={machineId} /> : null}
     </group>
   )

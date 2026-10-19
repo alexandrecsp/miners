@@ -1,17 +1,18 @@
 import { useFrame } from '@react-three/fiber'
 import { Select } from '@react-three/postprocessing'
 import { useRef } from 'react'
-import type { Group, MeshStandardMaterial } from 'three'
+import type { Group, Mesh } from 'three'
+import { useShallow } from 'zustand/react/shallow'
 import { machineStatus } from '../core/queries'
 import type { MachineStatus } from '../core/queries'
 import { sameTile } from '../core/tile'
-import type { Machine } from '../core/types'
 import { useGameStore } from '../store/gameStore'
 import { useUiStore } from '../store/uiStore'
 import { tileToWorld } from './grid'
 import { scenePalette } from './palette'
 import type { PaletteKey } from './palette'
 import { getMachineModel } from './modelRegistry'
+import { sharedSphere, sharedStandard } from './machineResources'
 
 /** The palette colour of each Machine Status kind; a new kind fails to compile until it has one. */
 const STATUS_COLOUR: Record<MachineStatus['kind'], PaletteKey> = {
@@ -21,25 +22,25 @@ const STATUS_COLOUR: Record<MachineStatus['kind'], PaletteKey> = {
   broken: 'statusBroken',
 }
 
-/** A small emissive light whose colour follows the Machine Status, read each frame through getState(). */
+/** The shared material of one Machine Status kind; every Machine in that Status uses the same one. */
+function statusMaterial(kind: MachineStatus['kind']) {
+  const colour = scenePalette(STATUS_COLOUR[kind])
+  return sharedStandard({ color: colour, emissive: colour, emissiveIntensity: kind === 'broken' ? 1 : 4 })
+}
+
+/** A small emissive light whose shared material follows the Machine Status, read each frame through getState(). */
 function StatusLight({ machineId }: { machineId: string }) {
-  const material = useRef<MeshStandardMaterial>(null)
+  const mesh = useRef<Mesh>(null)
   useFrame(({ clock }) => {
-    const mat = material.current
-    if (!mat) return
+    const m = mesh.current
+    if (!m) return
     const status = machineStatus(useGameStore.getState().game, machineId)
-    const colour = scenePalette(STATUS_COLOUR[status.kind])
-    mat.emissive.set(colour)
-    mat.color.set(colour)
-    // A Broken Machine's light sparks: it flickers between bright and dark.
-    mat.emissiveIntensity = status.kind === 'broken' ? 1 + 5 * Math.abs(Math.sin(clock.elapsedTime * 23)) : 4
+    const mat = statusMaterial(status.kind)
+    m.material = mat
+    // A Broken Machine's light sparks: it flickers between bright and dark (one value for all Broken lights).
+    if (status.kind === 'broken') mat.emissiveIntensity = 1 + 5 * Math.abs(Math.sin(clock.elapsedTime * 23))
   })
-  return (
-    <mesh position={[0.22, 0.5, 0.31]}>
-      <sphereGeometry args={[0.06, 12, 12]} />
-      <meshStandardMaterial ref={material} emissiveIntensity={4} />
-    </mesh>
-  )
+  return <mesh ref={mesh} position={[0.22, 0.5, 0.31]} geometry={sharedSphere(0.06, 12, 12)} material={statusMaterial('idle')} />
 }
 
 /** How far a Broken Machine leans, in radians. */
@@ -56,31 +57,40 @@ function BrokenTilt({ machineId, children }: { machineId: string; children: Reac
   return <group ref={group}>{children}</group>
 }
 
-function PlacedMachine({ machine, gridSize }: { machine: Machine; gridSize: number }) {
-  const hovered = useUiStore((s) => s.hoveredTile !== null && machine.tile !== null && sameTile(s.hoveredTile, machine.tile))
-  const selected = useUiStore((s) => s.selectedMachineId === machine.id)
-  if (!machine.tile) return null
-  const Model = getMachineModel(machine.defId)
-  const { x, z } = tileToWorld(machine.tile, gridSize)
+function PlacedMachine({ machineId }: { machineId: string }) {
+  // Narrow selectors: the Machine's Def and Tile change only on buy or Move, not on a Tick.
+  const machine = useGameStore(useShallow((s) => {
+    const found = s.game.machines.find((m) => m.id === machineId)
+    return found ? { defId: found.defId, tile: found.tile } : null
+  }))
+  const gridSize = useGameStore((s) => s.game.grid.size)
+  const tile = machine?.tile ?? null
+  const hovered = useUiStore((s) => s.hoveredTile !== null && tile !== null && sameTile(s.hoveredTile, tile))
+  const selected = useUiStore((s) => s.selectedMachineId === machineId)
+  if (!machine || !tile) return null
+  const { defId } = machine
+  const Model = getMachineModel(defId)
+  const { x, z } = tileToWorld(tile, gridSize)
   return (
     <group position={[x, 0, z]}>
-      <BrokenTilt machineId={machine.id}>
+      <BrokenTilt machineId={machineId}>
         <Select enabled={selected}>
-          <Model defId={machine.defId} machineId={machine.id} hovered={hovered} />
+          <Model defId={defId} machineId={machineId} hovered={hovered} />
         </Select>
       </BrokenTilt>
-      <StatusLight machineId={machine.id} />
+      <StatusLight machineId={machineId} />
     </group>
   )
 }
 
-/** Every placed Machine, one mesh group each, drawn from the model registry. */
+/** Every placed Machine, one mesh group each, drawn from the model registry. Re-renders only when the set of placed Machines changes, not on a Tick. */
 export function Machines() {
-  const machines = useGameStore((s) => s.game.machines)
-  const gridSize = useGameStore((s) => s.game.grid.size)
+  const placedIds = useGameStore(useShallow((s) => s.game.machines.filter((m) => m.tile).map((m) => m.id)))
   return (
     <>
-      {machines.map((m) => (m.tile ? <PlacedMachine key={m.id} machine={m} gridSize={gridSize} /> : null))}
+      {placedIds.map((id) => (
+        <PlacedMachine key={id} machineId={id} />
+      ))}
     </>
   )
 }

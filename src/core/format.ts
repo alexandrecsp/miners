@@ -38,7 +38,7 @@ export function formatNumber(value: number, options: FormatOptions = {}): string
 }
 
 const SECONDS_PER_MINUTE = 60
-const SECONDS_PER_HOUR = 3600
+export const SECONDS_PER_HOUR = 3600
 
 /** A length of real time in seconds as whole hours and the whole minutes left over, each formatted, for a string-table template. */
 export function formatDuration(seconds: number): { hours: string; minutes: string } {
