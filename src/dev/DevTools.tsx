@@ -55,7 +55,7 @@ function CheatsPanel() {
 export default function DevTools() {
   return (
     <>
-      <Stats />
+      <Stats className="dev-stats" />
       <Leva collapsed />
       <LookPanel />
       <CheatsPanel />

@@ -33,8 +33,8 @@ function InventoryRow({ id }: { id: string }) {
 export function MachineInventory() {
   const waitingIds = useGameStore(useShallow((s) => inventoryMachines(s.game).map((m) => m.id)))
   return (
-    <aside className="absolute bottom-4 left-4 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.inventory')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.inventory')}</h2>
       {waitingIds.length === 0 ? (
         <p className="mt-2 text-xs text-ink/60">{t('hud.inventoryEmpty')}</p>
       ) : (
@@ -44,6 +44,6 @@ export function MachineInventory() {
           ))}
         </ul>
       )}
-    </aside>
+    </section>
   )
 }

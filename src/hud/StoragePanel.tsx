@@ -50,13 +50,13 @@ function StorageRow({ resource }: { resource: ResourceId }) {
 /** The Storage panel: per Resource, the amount, the Storage Cap and the next Storage Upgrade, or the Unlock it waits for. */
 export function StoragePanel() {
   return (
-    <aside className="absolute right-80 top-16 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.storage')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.storage')}</h2>
       <ul className="mt-2 flex flex-col gap-3">
         {RESOURCE_IDS.map((resource) => (
           <StorageRow key={resource} resource={resource} />
         ))}
       </ul>
-    </aside>
+    </section>
   )
 }

@@ -42,4 +42,5 @@ Rules the Standards reviewer checks each diff against. Import restrictions on th
 ## Tests
 
 - Tests live beside the Game core and exercise it through its interface: New game, Player Actions, Step, Advance, Offline Replay, Queries, Save and the formatter.
+- The UI Store is a second test seam: its tests sit beside it and exercise it through its actions and `getState()`, resetting its state between tests.
 - Tests use a fixed seed or a scripted Rng and never real timers, `Math.random` or the real clock.

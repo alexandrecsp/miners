@@ -32,6 +32,11 @@ export function storageRoom(state: Pick<GameState, 'storage'>, resource: Resourc
   return Math.max(0, storageCap(state, resource) - state.storage[resource].amount)
 }
 
+/** Whether a Resource's Storage is full: its room is within ROOM_EPSILON of zero. */
+export function isStorageFull(state: Pick<GameState, 'storage'>, resource: ResourceId): boolean {
+  return storageRoom(state, resource) <= ROOM_EPSILON
+}
+
 /** Whether a Machine may stand on a Tile: the Def's rules, the Unlocked Area and other Machines. Shared by Placement and Move. */
 function checkTarget(state: PlacementView, machine: Machine, tile: Tile): Result<null> {
   if (!isTileUnlocked(state.grid, tile)) return fail('fail.outsideUnlocked')
@@ -119,13 +124,13 @@ export function machineStatus(state: GameState, machineId: string): MachineStatu
   if (!isMiner(machine.defId)) {
     const recipe = recipeOf(machine)
     if (!recipe) return { kind: 'idle', reason: 'inputsMissing' }
-    if (storageRoom(state, recipe.output) <= ROOM_EPSILON) return { kind: 'idle', reason: 'storageFull' }
+    if (isStorageFull(state, recipe.output)) return { kind: 'idle', reason: 'storageFull' }
     const efficiency = effectiveStats(machine).efficiency
     return refineBatchLimit(state, recipe, efficiency) > 0 ? { kind: 'working' } : { kind: 'idle', reason: 'inputsMissing' }
   }
   const deposit = minableDepositAt(state, machine)
   if (!deposit) return { kind: 'idle', reason: 'noDeposit' }
-  if (storageRoom(state, deposit.resource) <= ROOM_EPSILON) return { kind: 'idle', reason: 'storageFull' }
+  if (isStorageFull(state, deposit.resource)) return { kind: 'idle', reason: 'storageFull' }
   return { kind: 'working' }
 }
 

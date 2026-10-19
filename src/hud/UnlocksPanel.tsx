@@ -11,8 +11,8 @@ export function UnlocksPanel() {
   const earned = earnedUnlocks({ unlocks })
   const next = unlockProgress({ lifetime, unlocks })
   return (
-    <aside className="absolute left-80 top-16 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.unlocks')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.unlocks')}</h2>
       {earned.length > 0 && (
         <>
           <h3 className="mt-2 text-xs uppercase tracking-widest text-ink/60">{t('hud.unlocksEarned')}</h3>
@@ -37,6 +37,6 @@ export function UnlocksPanel() {
           </li>
         ))}
       </ul>
-    </aside>
+    </section>
   )
 }

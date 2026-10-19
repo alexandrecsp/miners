@@ -9,12 +9,22 @@ import type { Tile } from '../core/types'
 export type InteractionMode = { kind: 'none' } | { kind: 'placing'; machineId: string }
   | { kind: 'moving'; machineId: string }
 
+/** The HUD views the dock opens, in dock order. */
+export const HUD_VIEWS = ['market', 'machines', 'mods', 'base'] as const
+export type HudView = (typeof HUD_VIEWS)[number]
+
 const NOTICE_MS = 3500
 
 /** What a HUD notice tells the player: why a Player Action failed, or which Unlock was just earned. */
 export type NoticeContent = { kind: 'failure'; reason: StringId } | { kind: 'unlockEarned'; unlockId: UnlockId }
 
 interface UiState {
+  /** The HUD view open in the drawer, or null. */
+  openView: HudView | null
+  openHudView: (view: HudView) => void
+  /** Opens the view, or closes it when it is already the open one. */
+  toggleHudView: (view: HudView) => void
+  closeHudView: () => void
   hoveredTile: Tile | null
   setHoveredTile: (tile: Tile | null) => void
   selectedMachineId: string | null
@@ -44,6 +54,9 @@ export const selectMovingId = (s: UiState): string | null => (s.mode.kind === 'm
 /** The id of the Machine being placed, or null. */
 export const selectPlacingId = (s: UiState): string | null => (s.mode.kind === 'placing' ? s.mode.machineId : null)
 
+/** Opening a HUD view clears the selection and any Placement or Move, so the drawer and the Machine inspector never show together. */
+const NO_SELECTION_OR_MODE = { selectedMachineId: null, mode: { kind: 'none' } } as const
+
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
 let noticeSerial = 0
 /** Notices waiting for the one showing to end. */
@@ -63,6 +76,11 @@ export const useUiStore = create<UiState>((set, get) => {
     }, NOTICE_MS)
   }
   return {
+    openView: null,
+    openHudView: (view) => set({ openView: view, ...NO_SELECTION_OR_MODE }),
+    toggleHudView: (view) =>
+      set(get().openView === view ? { openView: null } : { openView: view, ...NO_SELECTION_OR_MODE }),
+    closeHudView: () => set({ openView: null }),
     hoveredTile: null,
     setHoveredTile: (tile) => {
       const current = get().hoveredTile
@@ -72,10 +90,14 @@ export const useUiStore = create<UiState>((set, get) => {
     selectedMachineId: null,
     mode: { kind: 'none' },
     notice: null,
-    startPlacing: (machineId) => set({ mode: { kind: 'placing', machineId }, selectedMachineId: null }),
-    startMoving: (machineId) => set({ mode: { kind: 'moving', machineId }, selectedMachineId: machineId }),
-    select: (machineId) => set({ selectedMachineId: machineId, mode: { kind: 'none' } }),
-    cancel: () => set({ mode: { kind: 'none' }, selectedMachineId: null }),
+    startPlacing: (machineId) => set({ mode: { kind: 'placing', machineId }, selectedMachineId: null, openView: null }),
+    startMoving: (machineId) => set({ mode: { kind: 'moving', machineId }, selectedMachineId: machineId, openView: null }),
+    select: (machineId) => {
+      // Selecting a Machine closes the drawer; deselecting keeps it open.
+      const closeDrawer = machineId === null ? {} : { openView: null }
+      set({ selectedMachineId: machineId, mode: { kind: 'none' }, ...closeDrawer })
+    },
+    cancel: () => set({ mode: { kind: 'none' }, selectedMachineId: null, openView: null }),
     showFailure: (reason) => {
       const current = get().notice
       if (current?.kind === 'unlockEarned') waitingNotices = [{ kind: 'unlockEarned', unlockId: current.unlockId }, ...waitingNotices]

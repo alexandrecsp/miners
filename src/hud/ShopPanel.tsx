@@ -47,8 +47,8 @@ export function ShopPanel() {
   const countdown = useGameStore((s) => Math.ceil(shopCountdown(s.game)))
   const refreshable = useGameStore((s) => checkShopRefresh(s.game).ok)
   return (
-    <aside className="absolute right-4 top-16 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.shop')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.shop')}</h2>
       <p className="mt-1 text-xs text-ink/60">
         {t('hud.shopRefreshIn')} {formatNumber(countdown)}
       </p>
@@ -62,6 +62,6 @@ export function ShopPanel() {
           {t('hud.shopRefresh')} {formatNumber(SHOP.refreshCost)}
         </PanelButton>
       </div>
-    </aside>
+    </section>
   )
 }

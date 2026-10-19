@@ -6,7 +6,7 @@ import { useUiStore } from '../store/uiStore'
 
 const CLICK_THRESHOLD_PX = 4
 
-/** Turns a click (not a drag) on the canvas into a Player Action or a selection, and Escape into a cancel. */
+/** Turns a click (not a drag) on the canvas into a Player Action or a selection. */
 export function ClickHandler() {
   const domElement = useThree((s) => s.gl.domElement)
 
@@ -35,16 +35,11 @@ export function ClickHandler() {
       const machine = machineAt(useGameStore.getState().game, tile)
       uiState.select(machine?.id ?? null)
     }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') useUiStore.getState().cancel()
-    }
     domElement.addEventListener('pointerdown', onDown)
     domElement.addEventListener('pointerup', onUp)
-    window.addEventListener('keydown', onKey)
     return () => {
       domElement.removeEventListener('pointerdown', onDown)
       domElement.removeEventListener('pointerup', onUp)
-      window.removeEventListener('keydown', onKey)
     }
   }, [domElement])
 

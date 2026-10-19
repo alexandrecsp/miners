@@ -49,13 +49,13 @@ function ModRow({ def }: { def: ModDef }) {
 /** The Mods panel: the Mod Catalogue with prices, and the count of each Mod in the Mod Inventory. */
 export function ModsPanel() {
   return (
-    <aside className="absolute left-4 top-16 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.mods')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.mods')}</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {Object.values(MOD_DEFS).map((def) => (
           <ModRow key={def.id} def={def} />
         ))}
       </ul>
-    </aside>
+    </section>
   )
 }

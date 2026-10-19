@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { newGame } from './newGame'
-import { inventoryMachines, isTileUnlocked, machineAt, storageCap } from './queries'
+import { inventoryMachines, isStorageFull, isTileUnlocked, machineAt, storageCap } from './queries'
 
 describe('storageCap', () => {
   it('is the Tier 1 cap for a new game', () => {
@@ -35,5 +35,29 @@ describe('inventoryMachines and machineAt', () => {
     const placed = { ...state, machines: state.machines.map((m) => ({ ...m, tile: { x: 11, y: 11 } })) }
     expect(inventoryMachines(placed)).toHaveLength(0)
     expect(machineAt(placed, { x: 11, y: 11 })?.id).toBe(state.machines[0]!.id)
+  })
+})
+
+describe('isStorageFull', () => {
+  it('is false for an empty Storage', () => {
+    expect(isStorageFull(newGame(1), 'ore')).toBe(false)
+  })
+
+  it('is true when the amount reaches the Storage Cap', () => {
+    const state = newGame(1)
+    state.storage.ore.amount = storageCap(state, 'ore')
+    expect(isStorageFull(state, 'ore')).toBe(true)
+  })
+
+  it('is true within float rounding of the Storage Cap', () => {
+    const state = newGame(1)
+    state.storage.ore.amount = storageCap(state, 'ore') - 1e-12
+    expect(isStorageFull(state, 'ore')).toBe(true)
+  })
+
+  it('is false with real room left', () => {
+    const state = newGame(1)
+    state.storage.ore.amount = storageCap(state, 'ore') - 1
+    expect(isStorageFull(state, 'ore')).toBe(false)
   })
 })

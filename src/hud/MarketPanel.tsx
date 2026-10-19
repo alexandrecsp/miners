@@ -77,13 +77,13 @@ function MarketRow({ resource }: { resource: ResourceId }) {
 /** The Market panel: each Resource's Market Price and Base Price. */
 export function MarketPanel() {
   return (
-    <aside className="absolute bottom-4 right-4 w-72 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.market')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.market')}</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {RESOURCE_IDS.map((resource) => (
           <MarketRow key={resource} resource={resource} />
         ))}
       </ul>
-    </aside>
+    </section>
   )
 }

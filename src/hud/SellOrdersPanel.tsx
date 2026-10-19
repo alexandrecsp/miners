@@ -70,13 +70,13 @@ export function SellOrdersPanel() {
   const unlocked = useGameStore((s) => isUnlocked(s.game, 'sellOrders'))
   if (!unlocked) return null
   return (
-    <aside className="absolute bottom-4 right-80 w-80 border border-edge bg-panel/85 p-3 shadow-glow backdrop-blur">
-      <h2 className="font-display text-sm uppercase tracking-widest text-accent">{t('hud.sellOrders')}</h2>
+    <section className="hud-panel">
+      <h2 className="hud-panel-heading">{t('hud.sellOrders')}</h2>
       <ul className="mt-2 flex flex-col gap-3">
         {RESOURCE_IDS.map((resource) => (
           <SellOrderRow key={resource} resource={resource} />
         ))}
       </ul>
-    </aside>
+    </section>
   )
 }

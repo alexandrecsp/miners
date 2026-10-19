@@ -47,3 +47,22 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body);
 }
+
+/* Moves the drei Stats overlay to the bottom-left so it does not cover the status bar. */
+.dev-stats {
+  top: auto !important;
+  bottom: 0 !important;
+}
+
+/* Panels inside the view drawer: the drawer is the only frame. A lone panel's heading is hidden because the drawer header names the view. */
+@layer components {
+  .hud-panel + .hud-panel {
+    @apply border-t border-edge pt-3;
+  }
+  .hud-panel-heading {
+    @apply font-display text-sm uppercase tracking-widest text-accent;
+  }
+  .hud-panel:only-child > .hud-panel-heading {
+    display: none;
+  }
+}
